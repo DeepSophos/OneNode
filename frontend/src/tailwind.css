@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html,
+    pre {
+        font-family: -apple-system, 'Arimo', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Ubuntu,
+        Cantarell, 'Noto Sans', sans-serif, 'Helvetica Neue', Arial, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    }
+
+    pre {
+        white-space: pre-wrap;
+    }
+
+    .prose :where(ol):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+        list-style-type: decimal;
+        margin-top: 1.25em !important;
+        margin-bottom: 1.25em !important;
+        padding-inline-start: 1.625em;
+    }
+
+    .prose :where(ul):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+        list-style-type: disc;
+        margin-top: 1.25em !important;
+        margin-bottom: 1.25em !important;
+        padding-inline-start: 1.625em;
+    }
+
+    .prose :where(li):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+        margin-top: 0.5em !important;
+        margin-bottom: 0.5em !important;
+    }
+
+}

@@ -1,0 +1,602 @@
+<script lang="ts">
+	import { toast } from 'svelte-sonner';
+	import { getContext, onDestroy, onMount, tick } from 'svelte';
+	import { blobToFile, findWordIndices } from '$lib/utils';
+	import VoiceRecording from './MessageInput/VoiceRecording.svelte';
+	import AddFilesPlaceholder from '../AddFilesPlaceholder.svelte';
+	import { SUPPORTED_FILE_EXTENSIONS, SUPPORTED_FILE_TYPE } from '$lib/constants';
+	import { checkAudioService } from '$lib/apis/audio';
+	import Tooltip from '../common/Tooltip.svelte';
+	import { gpu_number } from '$lib/stores';
+	const i18n = getContext('i18n');
+
+	export let submitPrompt: Function;
+	export let stopResponse: Function;
+
+	export let suggestionPrompts = [];
+	export let autoScroll = true;
+	let chatTextAreaElement: HTMLTextAreaElement;
+	let filesInputElement;
+
+	let promptsElement;
+	let documentsElement;
+	let modelsElement;
+
+	let inputFiles;
+	let dragged = false;
+
+	let recording = false;
+	let voice_input_enabled = false;
+
+	let user = null;
+	let chatInputPlaceholder = '';
+
+	export let files = [];
+
+	export let fileUploadEnabled = true;
+
+	export let prompt = '';
+	export let messages = [];
+
+	$: if (prompt) {
+		if (chatTextAreaElement) {
+			chatTextAreaElement.style.height = '';
+			chatTextAreaElement.style.height = Math.min(chatTextAreaElement.scrollHeight, 200) + 'px';
+		}
+	}
+
+	const scrollToBottom = () => {
+		const element = document.getElementById('messages-container');
+		element.scrollTop = element.scrollHeight;
+	};
+
+	let isListenerRegistered = false;
+	let dropZone;
+	const onDragOver = (e) => {
+		e.preventDefault();
+		dragged = true;
+	};
+
+	const onDragLeave = () => {
+		dragged = false;
+	};
+
+	const onDrop = async (e) => {
+		e.preventDefault();
+		console.log(e);
+
+		if (e.dataTransfer?.files) {
+			let reader = new FileReader();
+
+			reader.onload = (event) => {
+				files = [
+					...files,
+					{
+						type: 'image',
+						url: `${event.target.result}`
+					}
+				];
+			};
+
+			const inputFiles = e.dataTransfer?.files;
+
+			if (inputFiles && inputFiles.length > 0) {
+				const file = inputFiles[0];
+				console.log(file, file.name.split('.').at(-1));
+				if (['image/gif', 'image/jpeg', 'image/png'].includes(file['type'])) {
+					reader.readAsDataURL(file);
+				}
+                else {
+                    toast.error("不支持的上传文件格式.");
+                }
+			} else {
+				toast.error($i18n.t(`File not found.`));
+			}
+		}
+
+		dragged = false;
+	};
+	onMount(async () => {
+		if (isListenerRegistered) return;
+		voice_input_enabled = await checkAudioService();
+		window.setTimeout(() => chatTextAreaElement?.focus(), 0);
+		dropZone = document.querySelector('body');
+		dropZone?.addEventListener('dragover', onDragOver);
+		dropZone?.addEventListener('drop', onDrop);
+		dropZone?.addEventListener('dragleave', onDragLeave);
+		isListenerRegistered = true;
+		return () => {
+			dropZone?.removeEventListener('dragover', onDragOver);
+			dropZone?.removeEventListener('drop', onDrop);
+			dropZone?.removeEventListener('dragleave', onDragLeave);
+		};
+	});
+	onDestroy(() => {
+
+		console.log('unmounted');
+		dropZone?.removeEventListener('dragover', onDragOver);
+		dropZone?.removeEventListener('drop', onDrop);
+		dropZone?.removeEventListener('dragleave', onDragLeave);
+	});
+</script>
+
+{#if dragged}
+	<div
+		class="fixed lg:w-[calc(100%-260px)] w-full h-full flex z-50 touch-none pointer-events-none"
+		id="dropzone"
+		role="region"
+		aria-label="Drag and Drop Container"
+	>
+		<div class="absolute w-full h-full backdrop-blur bg-gray-800/40 flex justify-center">
+			<div class="m-auto pt-64 flex flex-col justify-center">
+				<div class="max-w-md">
+					<AddFilesPlaceholder />
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<div class="w-full">
+	<div class="bg-white dark:bg-gray-900">
+		<div class="max-w-3xl px-2.5 mx-auto inset-x-0">
+			<div class=" p-2">
+				<input
+					bind:this={filesInputElement}
+					bind:files={inputFiles}
+					type="file"
+					single
+					hidden
+					on:change={async () => {
+						let reader = new FileReader();
+						reader.onload = (event) => {
+							files = [
+								...files,
+								{
+									type: 'image',
+									url: `${event.target.result}`
+								}
+							];
+							inputFiles = null;
+							filesInputElement.value = '';
+						};
+
+						if (inputFiles && inputFiles.length > 0) {
+							const file = inputFiles[0];
+							if (['image/gif', 'image/jpeg', 'image/png'].includes(file['type'])) {
+								reader.readAsDataURL(file);
+							}
+							else {
+            					toast.error("不支持的上传文件格式.");
+							}
+						} else {
+							toast.error($i18n.t(`File not found.`));
+						}
+					}}
+				/>
+				{#if recording}
+					<VoiceRecording
+						bind:recording
+						onCancel={async () => {
+                            recording = false;
+
+                            await tick();
+                            document.getElementById('chat-input')?.focus();
+                        }}
+						onConfirm={async (data) => {
+                            prompt = `${prompt}${data} `;
+
+                            recording = false;
+
+                            await tick();
+                            document.getElementById('chat-input')?.focus();
+                        }}
+					/>
+				{:else}
+					<form
+						class=" flex flex-col relative w-full rounded-3xl px-1.5 border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 dark:text-gray-100"
+						on:submit|preventDefault={() => {
+                            submitPrompt(prompt, user);
+                        }}
+					>
+						{#if files.length > 0}
+							<div class="mx-2 mt-2 mb-1 flex flex-wrap gap-2">
+								{#each files as file, fileIdx}
+									<div class=" relative group">
+										{#if file.type === 'image'}
+											<img src={file.url} alt="input" class=" h-16 w-16 rounded-xl object-cover" />
+										{:else if file.type === 'doc'}
+											<div
+												class="h-16 w-[15rem] flex items-center space-x-3 px-2.5 dark:bg-gray-600 rounded-xl border border-gray-200 dark:border-none"
+											>
+												<div class="p-2.5 bg-red-400 text-white rounded-lg">
+													{#if file.upload_status}
+														<svg
+															xmlns="http://www.w3.org/2000/svg"
+															viewBox="0 0 24 24"
+															fill="currentColor"
+															class="w-6 h-6"
+														>
+															<path
+																fill-rule="evenodd"
+																d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z"
+																clip-rule="evenodd"
+															/>
+															<path
+																d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z"
+															/>
+														</svg>
+													{:else}
+														<svg
+															class=" w-6 h-6 translate-y-[0.5px]"
+															fill="currentColor"
+															viewBox="0 0 24 24"
+															xmlns="http://www.w3.org/2000/svg"
+														>
+															<style>
+                                  .spinner_qM83 {
+                                      animation: spinner_8HQG 1.05s infinite;
+                                  }
+
+                                  .spinner_oXPr {
+                                      animation-delay: 0.1s;
+                                  }
+
+                                  .spinner_ZTLf {
+                                      animation-delay: 0.2s;
+                                  }
+
+                                  @keyframes spinner_8HQG {
+                                      0%,
+                                      57.14% {
+                                          animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+                                          transform: translate(0);
+                                      }
+                                      28.57% {
+                                          animation-timing-function: cubic-bezier(0.33, 0, 0.66, 0.33);
+                                          transform: translateY(-6px);
+                                      }
+                                      100% {
+                                          transform: translate(0);
+                                      }
+                                  }
+															</style>
+															<circle class="spinner_qM83" cx="4" cy="12" r="2.5" />
+															<circle
+																class="spinner_qM83 spinner_oXPr"
+																cx="12"
+																cy="12"
+																r="2.5"
+															/>
+															<circle
+																class="spinner_qM83 spinner_ZTLf"
+																cx="20"
+																cy="12"
+																r="2.5"
+															/>
+														</svg
+														>
+													{/if}
+												</div>
+
+												<div class="flex flex-col justify-center -space-y-0.5">
+													<div class=" dark:text-gray-100 text-sm font-medium line-clamp-1">
+														{file.name}
+													</div>
+
+													<div class=" text-gray-500 text-sm">{$i18n.t('Document')}</div>
+												</div>
+											</div>
+										{:else if file.type === 'collection'}
+											<div
+												class="h-16 w-[15rem] flex items-center space-x-3 px-2.5 dark:bg-gray-600 rounded-xl border border-gray-200 dark:border-none"
+											>
+												<div class="p-2.5 bg-red-400 text-white rounded-lg">
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														viewBox="0 0 24 24"
+														fill="currentColor"
+														class="w-6 h-6"
+													>
+														<path
+															d="M7.5 3.375c0-1.036.84-1.875 1.875-1.875h.375a3.75 3.75 0 0 1 3.75 3.75v1.875C13.5 8.161 14.34 9 15.375 9h1.875A3.75 3.75 0 0 1 21 12.75v3.375C21 17.16 20.16 18 19.125 18h-9.75A1.875 1.875 0 0 1 7.5 16.125V3.375Z"
+														/>
+														<path
+															d="M15 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 17.25 7.5h-1.875A.375.375 0 0 1 15 7.125V5.25ZM4.875 6H6v10.125A3.375 3.375 0 0 0 9.375 19.5H16.5v1.125c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V7.875C3 6.839 3.84 6 4.875 6Z"
+														/>
+													</svg>
+												</div>
+
+												<div class="flex flex-col justify-center -space-y-0.5">
+													<div class=" dark:text-gray-100 text-sm font-medium line-clamp-1">
+														{file?.title ?? `#${file.name}`}
+													</div>
+
+													<div class=" text-gray-500 text-sm">{$i18n.t('Collection')}</div>
+												</div>
+											</div>
+										{/if}
+
+										<div class=" absolute -top-1 -right-1">
+											<button
+												class=" bg-gray-400 text-white border border-white rounded-full group-hover:visible invisible transition"
+												type="button"
+												on:click={() => {
+                                                    files.splice(fileIdx, 1);
+                                                    files = files;
+                                                }}
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 20 20"
+													fill="currentColor"
+													class="w-4 h-4"
+												>
+													<path
+														d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<div class=" flex">
+							{#if fileUploadEnabled && $gpu_number != 3}
+								<div class=" self-end mb-2 ml-1">
+									<Tooltip content={'带图提问'}>
+										<button
+											class="bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-850 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5"
+											type="button"
+											on:click={() => {
+                                                filesInputElement.click();
+                                            }}
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 -2 16 16"
+												fill="currentColor"
+												class="w-5 h-5">
+												<path
+													fill-rule="evenodd"
+													d="M9.621 7.68a.75.75 0 0 1 0 1.06l-2.997 2.996a1.85 1.85 0 1 1-2.618-2.618L7.104 6.02a.75.75 0 1 1 1.061 1.06L5.067 10.18a.35.35 0 1 0 .495.495l2.997-2.996a.75.75 0 0 1 1.062 0Z"
+													clip-rule="evenodd"
+												/>
+												<path
+													fill-rule="evenodd"
+													d="M3.421 8.654a5.25 5.25 0 0 1 7.433-7.433l3.146 3.146a3.75 3.75 0 0 1-5.304 5.303l-2.475-2.474a2.25 2.25 0 1 1 3.182-3.182l2.121 2.122a.75.75 0 1 1-1.06 1.06L8.343 5.075a.75.75 0 1 0-1.061 1.061l2.475 2.475a2.25 2.25 0 0 0 3.182-3.182L9.793 2.283a3.75 3.75 0 0 0-5.304 5.304l2.829 2.828a.75.75 0 0 1-1.061 1.061L3.42 8.654Z"
+													clip-rule="evenodd"
+												/>
+											</svg>
+										</button>
+									</Tooltip>
+								</div>
+							{/if}
+
+							<textarea
+								id="chat-textarea"
+								bind:this={chatTextAreaElement}
+								class=" dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-700 outline-none w-full py-3 px-3 {fileUploadEnabled
+                                    ? ''
+                                    : ' pl-4'} rounded-xl resize-none h-[48px]"
+								placeholder={chatInputPlaceholder !== '' ? chatInputPlaceholder : $i18n.t('Send a Message')}
+								bind:value={prompt}
+								on:keypress={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        if (prompt !== '' ) {
+                                            submitPrompt(prompt, user);
+                                        }
+                                    }
+
+                                }}
+								on:keydown={async (e) => {
+                                    const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
+
+                                    // Check if Ctrl + R is pressed
+                                    if (prompt === '' && isCtrlPressed && e.key.toLowerCase() === 'r') {
+                                        e.preventDefault();
+                                        console.log('regenerate');
+
+                                        const regenerateButton = [
+                                            ...document.getElementsByClassName('regenerate-response-button')
+                                        ]?.at(-1);
+
+                                        regenerateButton?.click();
+                                    }
+
+                                    if (prompt === '' && e.key == 'ArrowUp') {
+                                        e.preventDefault();
+
+                                        const userMessageElement = [
+                                            ...document.getElementsByClassName('user-message')
+                                        ]?.at(-1);
+
+                                        const editButton = [
+                                            ...document.getElementsByClassName('edit-user-message-button')
+                                        ]?.at(-1);
+
+                                        console.log(userMessageElement);
+
+                                        userMessageElement.scrollIntoView({ block: 'center' });
+                                        editButton?.click();
+                                    }
+
+                                    if (['/', '#', '@'].includes(prompt.charAt(0)) && e.key === 'ArrowUp') {
+                                        e.preventDefault();
+
+                                        (promptsElement || documentsElement || modelsElement).selectUp();
+
+                                        const commandOptionButton = [
+                                            ...document.getElementsByClassName('selected-command-option-button')
+                                        ]?.at(-1);
+                                        commandOptionButton.scrollIntoView({ block: 'center' });
+                                    }
+
+                                    if (['/', '#', '@'].includes(prompt.charAt(0)) && e.key === 'ArrowDown') {
+                                        e.preventDefault();
+
+                                        (promptsElement || documentsElement || modelsElement).selectDown();
+
+                                        const commandOptionButton = [
+                                            ...document.getElementsByClassName('selected-command-option-button')
+                                        ]?.at(-1);
+                                        commandOptionButton.scrollIntoView({ block: 'center' });
+                                    }
+
+                                    if (['/', '#', '@'].includes(prompt.charAt(0)) && e.key === 'Enter') {
+                                        e.preventDefault();
+
+                                        const commandOptionButton = [
+                                            ...document.getElementsByClassName('selected-command-option-button')
+                                        ]?.at(-1);
+
+                                        commandOptionButton?.click();
+                                    }
+
+                                    if (['/', '#', '@'].includes(prompt.charAt(0)) && e.key === 'Tab') {
+                                        e.preventDefault();
+
+                                        const commandOptionButton = [
+                                            ...document.getElementsByClassName('selected-command-option-button')
+                                        ]?.at(-1);
+
+                                        commandOptionButton?.click();
+                                    } else if (e.key === 'Tab') {
+                                        const words = findWordIndices(prompt);
+
+                                        if (words.length > 0) {
+                                            const word = words.at(0);
+                                            const fullPrompt = prompt;
+
+                                            prompt = prompt.substring(0, word?.endIndex + 1);
+                                            await tick();
+
+                                            e.target.scrollTop = e.target.scrollHeight;
+                                            prompt = fullPrompt;
+                                            await tick();
+
+                                            e.preventDefault();
+                                            e.target.setSelectionRange(word?.startIndex, word.endIndex + 1);
+                                        }
+                                    }
+                                }}
+								rows="1"
+								on:input={(e) => {
+                                    e.target.style.height = '';
+                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                    user = null;
+                                }}
+								on:focus={(e) => {
+                                    e.target.style.height = '';
+                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                }}
+								on:paste={(e) => {
+                                    const clipboardData = e.clipboardData || window.clipboardData;
+
+                                    if (clipboardData && clipboardData.items) {
+                                        for (const item of clipboardData.items) {
+                                            if (item.type.indexOf('image') !== -1) {
+                                                const blob = item.getAsFile();
+                                                const reader = new FileReader();
+
+                                                reader.onload = function (e) {
+                                                    files = [
+                                                        ...files,
+                                                        {
+                                                            type: 'image',
+                                                            url: `${e.target.result}`
+                                                        }
+                                                    ];
+                                                };
+
+                                                reader.readAsDataURL(blob);
+                                            }
+                                        }
+                                    }
+                                }}
+							/>
+
+							<div class="self-end mb-2 flex space-x-1.5 mr-1">
+								<!-- Record Button -->
+								{#if voice_input_enabled}
+									<Tooltip content={$i18n.t('Record message') || '录音输入'}>
+										<button
+											type="button"
+											on:click={() => recording = true}
+											disabled={!messages.at(-1).done}
+											class="{messages.at(-1).done
+                                                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-900 hover:text-white dark:bg-white dark:text-black dark:hover:bg-gray-300 '
+                                                    : 'text-gray-800 bg-gray-100 dark:text-gray-900 dark:bg-gray-800 disabled cursor-no-drop'} transition rounded-full p-1.5 self-center"
+
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												class="w-5 h-5"
+											>
+												<path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+												<path
+													d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.75 6.75 0 01-12 0v-1.5A.75.75 0 016 10.5z" />
+											</svg>
+										</button>
+									</Tooltip>
+								{/if}
+
+								{#if messages.length == 0 || messages.at(-1).done == true}
+									<Tooltip content={$i18n.t('Send message')}>
+										<button
+											class="{prompt !== ''
+                                                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-900 hover:text-white dark:bg-white dark:text-black dark:hover:bg-gray-300 '
+                                                    : 'text-white bg-black  hover:bg-gray-900 dark:bg-gray-800 dark:text-gray-900 disabled cursor-no-drop'} transition rounded-full p-1.5 self-center"
+											type="submit"
+											disabled={prompt === ''}
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 16 16"
+												fill="currentColor"
+												class="w-5 h-5"
+											>
+												<path
+													fill-rule="evenodd"
+													d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
+													clip-rule="evenodd"
+												/>
+											</svg>
+										</button>
+									</Tooltip>
+								{:else}
+									<button
+										class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5"
+										on:click={stopResponse}
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											viewBox="0 0 24 24"
+											fill="currentColor"
+											class="w-5 h-5"
+										>
+											<path
+												fill-rule="evenodd"
+												d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
+												clip-rule="evenodd"
+											/>
+										</svg>
+									</button>
+								{/if}
+							</div>
+						</div>
+					</form>
+				{/if}
+
+				<!--<div class="mt-1.5 text-xs text-gray-500 text-center">
+						{$i18n.t('LLMs can make mistakes. Verify important information.')}
+				</div> -->
+			</div>
+		</div>
+	</div>
+</div>
