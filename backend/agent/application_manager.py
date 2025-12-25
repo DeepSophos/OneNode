@@ -8,9 +8,9 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from fastmcp.client.elicitation import ElicitResult
 from models.graph_db import graph_query
-from super_agent import SuperAgent
-from data_pipe import DataPipe
-from io_data import IOData
+from agent.super_agent import SuperAgent
+from agent.data_pipe import DataPipe
+from agent.io_data import IOData
 import logging
 import time
 from datetime import datetime

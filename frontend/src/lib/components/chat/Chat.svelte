@@ -14,7 +14,7 @@
         chats,
         chatId,
         config,
-        WEBUI_NAME,
+        ONENODE_NAME,
         inner_prompt,
         tags as _tags,
         rightpanel_params,

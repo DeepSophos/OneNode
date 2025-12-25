@@ -1,6 +1,6 @@
 <script>
-    import {WEBUI_API_BASE_URL} from '$lib/constants';
-    import {WEBUI_NAME, config, user} from '$lib/stores';
+    import {ONENODE_API_BASE_URL} from '$lib/constants';
+    import {ONENODE_NAME, config, user} from '$lib/stores';
     import {goto} from '$app/navigation';
     import {onMount, getContext} from 'svelte';
 

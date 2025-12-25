@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { WEBUI_NAME, config } from '$lib/stores';
+	import { ONENODE_NAME, config } from '$lib/stores';
 	import { onMount, getContext } from 'svelte';
 	import { uploadLicense } from '$lib/apis/index';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { WEBUI_NAME, config } from '$lib/stores';
-	import { WEBUI_VERSION } from '$lib/constants';
+	import { ONENODE_NAME, config } from '$lib/stores';
+	import { ONENODE_VERSION } from '$lib/constants';
 	import { getChangelog } from '$lib/apis';
 	
 	const i18n = getContext('i18n');
@@ -19,13 +19,13 @@
   
   <!-- <div class="px-5 py-4 dark:text-gray-300">
 	<div class="text-xl font-bold">
-	  {$i18n.t('What’s New in')} {$WEBUI_NAME}
+	  {$i18n.t('What’s New in')} {$ONENODE_NAME}
 	</div>
 	<div class="flex items-center mt-1">
 	  <div class="text-sm dark:text-gray-200">{$i18n.t('Release Notes')}</div>
 	  <div class="flex self-center w-[1px] h-6 mx-2.5 bg-gray-200 dark:bg-gray-700" />
 	  <div class="text-sm dark:text-gray-200">
-		v{WEBUI_VERSION}
+		v{ONENODE_VERSION}
 	  </div>
 	</div>
   </div>

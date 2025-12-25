@@ -1,0 +1,85 @@
+{
+  "pricingData": [
+    {
+      "name": "免费版",
+      "sub_version": "FREE",
+      "docsSize": "300M",
+      "dailyQueries": 20,
+      "processing": "可同时处理",
+      "features": "所有功能",
+      "support": "微信群在线服务",
+      "deployment": "本地下载、一键安装",
+      "license": "永久",
+      "price": "0元/年",
+      "priceNum": 0,
+      "highlighted":false
+    },
+    {
+      "name": "启航版",
+      "sub_version": "BASIC",
+      "docsSize": "3G",
+      "dailyQueries": 60,
+      "processing": "可同时处理",
+      "features": "所有功能",
+      "support": "微信群在线服务",
+      "deployment": "本地下载、一键安装",
+      "license": "永久",
+      "price": "1999元/年",
+      "priceNum": 1999,
+      "highlighted":false
+    },
+    {
+      "name": "领先版",
+      "sub_version": "PRO",
+      "docsSize": "10G",
+      "dailyQueries": 200,
+      "processing": "可同时处理",
+      "features": "所有功能",
+      "support": "微信群在线服务",
+      "deployment": "本地下载、一键安装",
+      "license": "永久",
+      "price": "3999元/年",
+      "priceNum": 3999,
+      "highlighted":true
+    },
+    {
+      "name": "旗舰版",
+      "sub_version": "旗舰版",
+      "docsSize": "30G",
+      "dailyQueries": 500,
+      "processing": "可同时处理",
+      "features": "所有功能",
+      "support": "微信群在线服务",
+      "deployment": "本地下载、一键安装",
+      "license": "永久",
+      "price": "6999元/年",
+      "priceNum": 6999,
+      "highlighted":false
+    }
+  ],
+  "fieldConfig": {
+    "docsSize": {
+      "label": "文档资料总量",
+      "highlight": true
+    },
+    "dailyQueries": {
+      "label": "问答次数/天",
+      "highlight": true
+    },
+    "processing": {
+      "label": "学习/推理响应"
+    },
+    "features": {
+      "label": "系统功能"
+    },
+    "support": {
+      "label": "服务标准"
+    },
+    "deployment": {
+      "label": "部署方式"
+    },
+    "license": {
+      "label": "授权时间"
+    }
+  }
+}

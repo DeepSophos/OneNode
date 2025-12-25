@@ -1,7 +1,7 @@
 <script lang="ts">
     import {getVersionInfo} from '$lib/apis';
-    import {WEBUI_VERSION} from '$lib/constants';
-    import {WEBUI_NAME, config, showChangelog,system_name} from '$lib/stores';
+    import {ONENODE_VERSION} from '$lib/constants';
+    import {ONENODE_NAME, config, showChangelog,system_name} from '$lib/stores';
     import {compareVersion} from '$lib/utils';
     import {onMount, getContext} from 'svelte';
     import {toast} from 'svelte-sonner';

@@ -13,6 +13,7 @@ import hashlib
 import os
 import re
 import ipaddress
+from apps.web.models.users import Users
 
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
@@ -76,9 +77,9 @@ def verify_token(token: str):
     ):
         return False
     user = None
-    # user = Users.get_user_by_id(data["id"])
-    # if not user:
-    #     return False
+    user = Users.get_user_by_id(data["id"])
+    if not user:
+        return False
     return user
 
 def get_current_user(

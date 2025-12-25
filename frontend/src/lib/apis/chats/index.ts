@@ -1,4 +1,4 @@
-import { BACKEND_API_BASE_URL, RAG_API_BASE_URL, ONENODE_API_BASE_URL } from '$lib/constants';
+import { BACKEND_API_BASE_URL, ONENODE_API_BASE_URL } from '$lib/constants';
 
 export const createNewChat = async (token: string, chat: object) => {
 	let error = null;

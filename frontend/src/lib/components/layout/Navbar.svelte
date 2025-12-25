@@ -6,7 +6,7 @@
 
 	import { Separator } from 'bits-ui';
 	import { getChatById } from '$lib/apis/chats';
-	import { WEBUI_NAME, chatId, modelfiles, settings, showSettings } from '$lib/stores';
+	import { ONENODE_NAME, chatId, modelfiles, settings, showSettings } from '$lib/stores';
 
 	import { slide } from 'svelte/transition';
 	import ShareChatModal from '../chat/ShareChatModal.svelte';
@@ -23,7 +23,7 @@
 	const i18n = getContext('i18n');
 
 	export let initNewChat: Function;
-	export let title: string = $WEBUI_NAME;
+	export let title: string = $ONENODE_NAME;
 	export let shareEnabled: boolean = false;
 
 	export let selectedScopes;
@@ -55,7 +55,7 @@
 			<div class="flex items-center w-full max-w-full">
 				<div class=" flex-1 self-center font-medium line-clamp-1">
 					<div>
-						{title != '' ? title : $WEBUI_NAME}
+						{title != '' ? title : $ONENODE_NAME}
 					</div>
 				</div>
 				<div class="pl-2 self-center flex items-center">
@@ -94,7 +94,7 @@
 
 		<!-- <div class=" flex-1 self-center font-medium line-clamp-1">
 			<div>
-				{title != '' ? title : $WEBUI_NAME}
+				{title != '' ? title : $ONENODE_NAME}
 			</div>
 		</div> -->
 

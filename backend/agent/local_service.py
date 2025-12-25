@@ -6,22 +6,10 @@ from models.graph_db import graph_query
 from mcp_bus import read_doc
 from mcp_bus import graph_ops
 from mcp_bus import write_doc
-from apps.agents.esaccessor import get_pdf_name_by_scopes
-from apps.agents.retriever import EmbeddingRetriever, BM25Retriever, retrieve
-from apps.agents.reranker import rerank
 
 
 WHITE_BOARD = "白板"
 APP_CONSTS = "静态数据"
-
-def get_base_url():
-    try:
-        from apps.agents.main import app
-        base_url = app.state.base_path
-    except ImportError:
-        base_url = ""
-    return base_url
-
 
 def encode_filename_to_urlsafe(filename):
     # Convert the filename string to bytes
@@ -212,19 +200,6 @@ async def read_docx_tmpl(app_session, tmpl_filename):
 
 async def retrieve_scope(app_session, scope_name, title):
     app_session.write_log(f"retrieve_scope, scope_name={scope_name}, title={title}")
-
-    # docs = await retrieve(self.memory['query_total'], pdf_names, [EmbeddingRetriever, BM25Retriever])
-    # docs = await rerank(self.memory['query_total'], docs)
-
-    # 获取指定知识集的文档名称
-    pdf_names = get_pdf_name_by_scopes([scope_name])
-    # 执行混合检索（向量检索+关键词检索）
-    docs = await retrieve(title, pdf_names, [EmbeddingRetriever, BM25Retriever])
-    # 对检索结果进行重排序
-    docs = await rerank(title, docs)
-
-    # 获取相关的反馈信息
-    # feedbacks = chat_man.get_relevant_answer(title, [scopename])
     return {"status": "successfully", "type": "tree", "data": []}
 
 

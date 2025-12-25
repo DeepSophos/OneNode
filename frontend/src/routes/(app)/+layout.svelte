@@ -6,11 +6,6 @@
 	const { saveAs } = fileSaver;
 
 	import { goto, beforeNavigate} from '$app/navigation';
-
-	import { getModelfiles } from '$lib/apis/modelfiles';
-	import { getPrompts } from '$lib/apis/prompts';
-	import { getOpenAIModels } from '$lib/apis/openai';
-	import { getDocs } from '$lib/apis/documents';
 	import { getAllChatTags } from '$lib/apis/chats';
 
 	import {
@@ -27,7 +22,7 @@
 		rightpanel_params,
 		config
 	} from '$lib/stores';
-	import { REQUIRED_OLLAMA_VERSION, WEBUI_API_BASE_URL } from '$lib/constants';
+	import { REQUIRED_OLLAMA_VERSION, ONENODE_API_BASE_URL } from '$lib/constants';
 	import { compareVersion } from '$lib/utils';
 	import { getKnowledgeScopes } from '$lib/apis/rag';
 
@@ -54,18 +49,6 @@
 		} else if (['user', 'admin', 'kbman'].includes($user.role)) {
 			try {
 				// Check if IndexedDB exists
-				DB = await openDB('Chats', 1);
-
-				if (DB) {
-					const chats = await DB.getAllFromIndex('chats', 'timestamp');
-					localDBChats = chats.map((item, idx) => chats[chats.length - 1 - idx]);
-
-					if (localDBChats.length === 0) {
-						await deleteDB('Chats');
-					}
-				}
-
-				console.log(DB);
 			} catch (error) {
 				// IndexedDB Not Found
 			}
