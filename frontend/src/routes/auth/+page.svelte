@@ -46,12 +46,6 @@
     let company_name = '';
     onMount(async () => {
 
-        await getSystemName().then((data) => {
-            console.log(data)
-            company_name = data.allCompanyName ? data.allCompanyName : '上海求索时刻科技有限公司';
-            systemName = data.system_name;
-            loginBg = data.login_bg;
-        })
         await getRegVerifyStatus().then((data) => {
             reg_verify = data;
             if ($signUpEnabledStatus) {

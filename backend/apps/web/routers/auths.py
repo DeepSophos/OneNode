@@ -31,7 +31,6 @@ from utils.utils import (
 )
 from utils.misc import parse_duration, validate_email_format
 from constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
-import models.kbm as kbm
 import config
 
 router = APIRouter()
@@ -100,7 +99,6 @@ async def update_password(
 # SignIn
 ############################
 
-
 @router.post("/signin", response_model=SigninResponse)
 async def signin(request: Request, form_data: SigninForm):
     if form_data.code:
@@ -108,11 +106,9 @@ async def signin(request: Request, form_data: SigninForm):
             raise HTTPException(400, detail="该手机号未注册")
     user = Auths.authenticate_user(form_data.email.lower(), form_data.password, form_data.code)
     if user:
-        JWT_EXPIRES_IN = kbm.get_config('sdk_access_token_duration')
+        JWT_EXPIRES_IN = None
         if not JWT_EXPIRES_IN:
             JWT_EXPIRES_IN = request.app.state.JWT_EXPIRES_IN
-        elif int(JWT_EXPIRES_IN) > 0:
-            JWT_EXPIRES_IN = f"{JWT_EXPIRES_IN}d"
 
         token = create_token(
             data={"id": user.id},
@@ -171,7 +167,7 @@ async def signup(request: Request, form_data: SignupForm):
         )
 
         if user:
-            JWT_EXPIRES_IN = kbm.get_config('sdk_access_token_duration')
+            JWT_EXPIRES_IN = None
             if not JWT_EXPIRES_IN:
                 JWT_EXPIRES_IN = request.app.state.JWT_EXPIRES_IN
             elif int(JWT_EXPIRES_IN) > 0:

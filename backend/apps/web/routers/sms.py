@@ -17,7 +17,7 @@ SMS_TEMPLATE
 )
 
 log = logging.getLogger(__name__)
-log.setLevel(SRC_LOG_LEVELS["MODELS"])
+log.setLevel(SRC_LOG_LEVELS["AGENT"])
 router = APIRouter()
 
 # 初始化存储实例

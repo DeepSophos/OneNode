@@ -97,6 +97,15 @@ USER_PERMISSIONS = {"chat": {"deletion": USER_PERMISSIONS_CHAT_DELETION}}
 
 WEBUI_AUTH = True
 
+
+####################################
+# 短信配置
+####################################
+SMS_BASE_URL = 'http://tmadv.glendale.top/api/sendmessage'
+SMS_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjpbXSwiaWF0IjoxNjUyMTUxMTIwLCJleHAiOjE3MTI2NzgzOTksImF1ZCI6IiIsImlzcyI6ImhhbiBjaGFvIiwic3ViIjoiIn0.-i8rPi3qjOjuZ6CS_rbWqQvFsoxFxwVXSG3IDpNq6CU'
+SMS_TEMPLATE = '【求索时刻】欢迎您使用，全球领先的企业AI原生知识库系统；本次验证码为：{code}'
+
+
 ####################################
 # WEBUI_SECRET_KEY
 ####################################

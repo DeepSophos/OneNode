@@ -42,7 +42,6 @@
 		theme.set(localStorage.theme);
 		// Check Backend Status
 		const backendConfig = await getBackendConfig();
-		signUpEnabledStatus.set(await getSignUpEnabledStatus());
 		if (backendConfig) {
 			// Save Backend Status to Store
 			await config.set(backendConfig);

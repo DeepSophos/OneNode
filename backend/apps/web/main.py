@@ -4,11 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.web.routers import (
     auths,
     users,
-    chats,
-    configs,
     utils,
-    modelfiles,
-    sms,
 )
 from config import (
     WEBUI_AUTH,
@@ -38,10 +34,7 @@ app.add_middleware(
 
 app.include_router(auths.router, prefix="/auths", tags=["auths"])
 app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(chats.router, prefix="/chats", tags=["chats"])
-app.include_router(configs.router, prefix="/configs", tags=["configs"])
 app.include_router(utils.router, prefix="/utils", tags=["utils"])
-app.include_router(sms.router, prefix="/sms", tags=["sms"])
 
 
 @app.get("/")

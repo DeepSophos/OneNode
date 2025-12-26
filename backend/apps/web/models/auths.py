@@ -11,7 +11,7 @@ from config import SRC_LOG_LEVELS
 from apps.web.routers.sms import verify_code_internal
 
 log = logging.getLogger(__name__)
-log.setLevel(SRC_LOG_LEVELS["MODELS"])
+log.setLevel(SRC_LOG_LEVELS["AGENT"])
 
 
 ####################

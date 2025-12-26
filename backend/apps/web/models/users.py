@@ -65,7 +65,6 @@ class UsersTable:
     def insert_new_user(
         self, id: str, name: str, email: str, role: str = "pending"
     ) -> Optional[UserModel]:
-        from docman import perm_tree
 
         user = UserModel(
             **{
@@ -80,9 +79,6 @@ class UsersTable:
         )
         result = User.create(**user.model_dump())
         if result:
-            unit_path = perm_tree.get_user_default_unit(name)
-            perm_tree.add_user_to_unit(id, unit_path)
-
             return user
         else:
             return None

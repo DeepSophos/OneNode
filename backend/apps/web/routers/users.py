@@ -10,7 +10,6 @@ import uuid
 import logging
 import pathlib
 
-import models.kbm as kbm
 from apps.web.models.users import UserModel, UserUpdateForm, UserRoleUpdateForm, Users, register
 from apps.web.models.auths import Auths
 
@@ -21,7 +20,7 @@ from constants import ERROR_MESSAGES
 from config import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
-log.setLevel(SRC_LOG_LEVELS["MODELS"])
+log.setLevel(SRC_LOG_LEVELS["AGENT"])
 
 router = APIRouter()
 
@@ -57,9 +56,9 @@ async def update_user_permissions(
 ############################
 # Apply SDK Token
 ############################
-
 @router.post("/apply/token", response_model=Dict)
 async def apply_token(request: Request, form_data: dict):
+    JWT_EXPIRES_IN = None
     secret_dir = pathlib.Path("data") / "secret"
     secret_dir.mkdir(parents=True, exist_ok=True)
 
@@ -80,11 +79,8 @@ async def apply_token(request: Request, form_data: dict):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         if is_create:
-            JWT_EXPIRES_IN = kbm.get_config('sdk_access_token_duration')
             if not JWT_EXPIRES_IN:
                 JWT_EXPIRES_IN = request.app.state.JWT_EXPIRES_IN
-            elif int(JWT_EXPIRES_IN) > 0:
-                JWT_EXPIRES_IN = f"{JWT_EXPIRES_IN}d"
 
             user_token = create_token(
                 data={"id": user_id},

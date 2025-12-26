@@ -1,8 +1,5 @@
 <script lang="ts">
-import Chat from '$lib/components/chat/Chat.svelte';
-
-let newPage = true;
-
+import AppList from '$lib/components/application/AppList.svelte';
 </script>
 
-<Chat {newPage} />
+<AppList></AppList>
