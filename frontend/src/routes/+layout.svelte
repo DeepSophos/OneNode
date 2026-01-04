@@ -53,6 +53,41 @@
 
 			await ONENODE_NAME.set(backendConfig.name);
 			console.log(backendConfig);
+			if ($config) {
+                const queryParams = new URLSearchParams(window.location.search);
+
+                // Check if 'token' parameter exists
+                if (queryParams.has('token')) {
+                    const token = queryParams.get('token'); // Get the token value
+					const sessionUser = await getSessionUser(token).catch((error) => {
+						toast.error(error);
+					});
+					localStorage.token = token;
+                    await user.set(sessionUser);
+                    localStorage.setItem('builtin_mode', 'token')//登录模式
+                }
+
+				if (localStorage.token) {
+
+
+					// Get Session User Info
+					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
+						toast.error(error);
+						return null;
+					});
+
+					if (sessionUser) {
+						// Save Session User to Store
+						await user.set(sessionUser);
+					} else {
+						// Redirect Invalid Session User to /auth Page
+						localStorage.removeItem('token');
+						await goto('/auth');
+					}
+				} else {
+					await goto('/auth');
+				}
+			}
 		} else {
 			// Redirect to /error when Backend Not Detected
 			await goto(`/error`);

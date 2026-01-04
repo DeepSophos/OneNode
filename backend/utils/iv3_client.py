@@ -234,6 +234,24 @@ async def async_chat(prompt: str):
             print(f"Error occurred: {e}")
             return None
 
+async def qwen_chat(prompt: str):
+    from openai import OpenAI
+    import os
+
+    # 初始化OpenAI客户端
+    client = OpenAI(
+        # 如果没有配置环境变量，请用阿里云百炼API Key替换：api_key="sk-xxx"
+        api_key=os.getenv("ALIYUN_API_KEY"),
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    )
+
+    messages = [{"role": "user", "content": prompt}]
+    completion = client.chat.completions.create(
+        model="glm-4.7",  # deepseek-v3.2 glm-4.7 qwen-plus
+        messages=messages
+    )
+
+    return completion.choices[0].message.content
 
 if __name__ == '__main__':
 #     p1 = """

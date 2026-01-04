@@ -59,7 +59,7 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
 @mcp.tool
 async def input_query(title: str, ctx: Context) -> str:
     """
-    **输入查询**这个工具用于请求用户输入指定的查询。其中，标题为对话框的标题。
+    **输入文字**这个工具用于用户文字交互。其中，标题为对话框的标题。
     """
     roots = await ctx.list_roots()
     app_session = MCPSession([str(root.uri) for root in roots], ctx)
@@ -203,6 +203,70 @@ async def retrieve_scope(scope_name: str, query: str, ctx: Context) -> str:
     app_session = MCPSession([str(root.uri) for root in roots], ctx)
     try:
         ret = await local_service.retrieve_scope(app_session, scope_name, query)
+        return json.dumps(ret)
+    except Exception as e:
+        app_session.write_log(e)
+        app_session.write_log(traceback.format_exc())
+        return json.dumps({"status": "error", "data": str(e)})
+
+@mcp.tool
+async def extract_rule_field(ctx: Context) -> str:
+    """
+    **提取规则字段**这个工具用于提取规则字段。
+    """
+    roots = await ctx.list_roots()
+    app_session = MCPSession([str(root.uri) for root in roots], ctx)
+    try:
+        ret = await local_service.extract_rule_field(app_session)
+        return json.dumps(ret)
+    except Exception as e:
+        app_session.write_log(e)
+        app_session.write_log(traceback.format_exc())
+        return json.dumps({"status": "error", "data": str(e)})
+
+@mcp.tool
+async def query_memgraph(cypher: str, query_str: str, ctx: Context) -> str:
+    """
+    **memgraph查询工具**这个工具用于执行memgraph的精确查询。参数说明：
+    cypher: memgraph 查询语句, 示例：MATCH (n:Data {type:"case"}) RETURN n
+    query_str: 原始用户问题
+    """
+    roots = await ctx.list_roots()
+    app_session = MCPSession([str(root.uri) for root in roots], ctx)
+    try:
+        ret = await local_service.query_memgraph(app_session, cypher, query_str)
+        return json.dumps(ret)
+    except Exception as e:
+        app_session.write_log(e)
+        app_session.write_log(traceback.format_exc())
+        return json.dumps({"status": "error", "data": str(e)})
+
+@mcp.tool
+async def query_embedding(keywords: str, query_str: str,  ctx: Context) -> str:
+    """
+    **语义检索**这个工具用于执行语义检索。参数说明：
+    keywords: 语义检索关键词,示例：电气火灾
+    query_str: 原始用户问题
+    """
+    roots = await ctx.list_roots()
+    app_session = MCPSession([str(root.uri) for root in roots], ctx)
+    try:
+        ret = await local_service.query_embedding(app_session, keywords, query_str)
+        return json.dumps(ret)
+    except Exception as e:
+        app_session.write_log(e)
+        app_session.write_log(traceback.format_exc())
+        return json.dumps({"status": "error", "data": str(e)})
+
+@mcp.tool
+async def query_vllm(ctx: Context) -> str:
+    """
+    **智能问答**这个工具根据检索后的案件信息请求大模型，实现智能回答。
+    """
+    roots = await ctx.list_roots()
+    app_session = MCPSession([str(root.uri) for root in roots], ctx)
+    try:
+        ret = await local_service.query_vllm(app_session)
         return json.dumps(ret)
     except Exception as e:
         app_session.write_log(e)

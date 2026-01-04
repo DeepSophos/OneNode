@@ -139,10 +139,13 @@ class AgentGetDataForm(BaseModel):
 
 
 @app.get("/application/run/{app_id}")
-async def application_run(app_id: str, request: Request, user=Depends(get_current_user)):
+async def application_run(app_id: str, node_name: str = "", request: Request = None, user=Depends(get_current_user)):
     try:
         agent_app = app.state.app_man.get_application(app_id)
-        response = await agent_app.run()
+        options = {}
+        if node_name :
+            options.add("start_node_name", node_name)
+        response = await agent_app.run(options=options)
         return StreamingResponse(
             response,
             media_type = "text/event-stream",
@@ -718,32 +721,6 @@ async def application_delete_appctx(appctx_info: AppCtxInfoForm, request: Reques
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
         )
-
-
-@app.get("/application/template/{app_id}")
-async def application_template(
-        app_id: str,
-        request: Request,
-        user=Depends(get_current_user)):
-    try:
-        upload_dir = f"{IS_KB_PATH}/application/{app_id}/const/"
-        if not os.path.isdir(upload_dir):
-            return JSONResponse({"file_name": ""})
-
-        file_list = os.listdir(upload_dir)
-        file_name = (f"application/download/{lsv.encode_filename_to_urlsafe(app_id + '/const/' + file_list[0])}"
-                     if file_list else "")
-
-        return JSONResponse({"file_name": file_name})
-
-    except Exception as e:
-        log.info(e)
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ERROR_MESSAGES.DEFAULT(e),
-        )
-
 
 @app.get("/application/get_files/{app_id}")
 async def application_get_files(

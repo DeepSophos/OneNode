@@ -10,6 +10,7 @@ import traceback
 from fastmcp.client.transports import StdioTransport
 import os, re
 import sys
+import config as main_config
 from pathlib import Path
 
 
@@ -39,7 +40,14 @@ class SuperAgent:
         self.transport = StdioTransport(
             command=sys.executable,
             args=[str(self.owner().mcp_path)],
-            env={"PYTHONPATH": str(self.owner().python_path),"MEM_GRAPH_URL": os.environ.get("MEM_GRAPH_URL", "127.0.0.1:7687")},
+            env={
+                "PYTHONPATH": str(self.owner().python_path),
+                "MEM_GRAPH_URL": os.environ.get("MEM_GRAPH_URL", "127.0.0.1:7687"),
+                "INTERVL_URL": main_config.INTERVL_URL,
+                "HF_URL": main_config.HF_URL,
+                "ALIYUN_API_KEY": os.environ.get("ALIYUN_API_KEY", ""),
+
+            },
             cwd=str(self.owner().python_path)
         )
 
@@ -55,7 +63,7 @@ class SuperAgent:
     async def invoke(self, app_ctx):
         def build_input_block():
             # convert agent id to io_data node id
-            inp_nodes = [n[0] for n in self.get_input(app_ctx)]
+            inp_nodes = [n[0] for n in self.get_input(app_ctx) if n]
             content = ""
             for i, node in enumerate(inp_nodes):
                 content += f"## 参考内容{i}\n"
@@ -158,7 +166,6 @@ inputSchema: {v['inputSchema']}
                 answer = await async_chat(prompt)
                 await self.print('llm', answer or '调用错误')
 
-                # answer = image_conversation(prompt, [])
                 log.info(answer)
                 json_data = None
 
@@ -269,9 +276,14 @@ inputSchema: {v['inputSchema']}
 
     def is_callable(self, app_ctx):
         inp_nodes = self.get_input(app_ctx)
-        if all(inp_nodes):
-            return True
-        return False
+
+        for sub_inp_nodes in inp_nodes:
+            if len(sub_inp_nodes) == 0:
+                return  False
+            for inp_node in sub_inp_nodes:
+                if str(inp_node.get("content","")).strip() == "":
+                    return False
+        return True
 
     def get_result_by_name(self, app_ctx, node_name):
         io_data_nodes = self.owner().graph().get_node("IOData",{
@@ -342,11 +354,11 @@ inputSchema: {v['inputSchema']}
         })
 
     def get_data(self, app_ctx, type: str, content: str):
-        MAX_LEN = 40
+        MAX_LEN = 100
         def get_name(n):
             name = n.get("name", n.get("title", ""))
             if len(name) > MAX_LEN:
-                name = name[:40] + "..."
+                name = name[:MAX_LEN] + "..."
             return name
 
         def get_desc(n):

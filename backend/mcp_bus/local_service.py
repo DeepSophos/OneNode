@@ -1,6 +1,7 @@
-import json
+import json, re
 import base64
-from fuzzywuzzy import fuzz
+import jieba
+from rank_bm25 import BM25Okapi
 from pathlib import Path
 from models.graph_db import graph_query
 from mcp_bus import read_doc
@@ -10,6 +11,7 @@ from mcp_bus import write_doc
 
 WHITE_BOARD = "白板"
 APP_CONSTS = "静态数据"
+DOCUMENT = "文档数据"
 
 def get_base_url():
     try:
@@ -206,6 +208,323 @@ async def read_docx_tmpl(app_session, tmpl_filename):
     doc_reader.read_tmpl(tmpl_filenames[0])
     return {"status": "successfully", "type": "graph", "data": f"{APP_CONSTS}"}
 
+async def extract_rule_field(app_session):
+    from utils.iv3_client import async_chat
+    from utils import hf_client
+    root_node = app_session.add_node(
+        {"name": "CASEROOT"}
+    )
+
+    prompt_template = """
+从{node_name}中提取以下字段：
+保单号
+被保险人信息
+货物名称
+货物包装数量
+包装情况
+发货人
+收货人
+运输方式
+航程信息
+事故发生日期
+事故发生地点
+货损金额
+货损币种
+核损金额
+残值处理
+追偿处理
+损失状况描述
+可能导致原因
+是否淡水或海水损
+事故经过
+损失原因
+理算金额
+理算币种
+输出要求：
+1. 输出json格式，key为字段名称，value为对应的值
+2. 如果文档中没有对应字段，value值为"未告知"
+3. 金额类字段换算成RMB，只输出数字，去掉币种符号
+4. 日期类字段统一格式为YYYY-MM-DD
+5. 描述、原因等字段尽可能详细，不要精简或艺术加工
+{node_name}执行的结果是：   
+node_content
+"""
+    node_data = {
+        "app_id": app_session.app_id,
+        "agent_id": app_session.agent_id,
+        "io_data_id": app_session.io_data_id,
+        "app_ctx_id": app_session.appctx_id,
+        "type": "case"
+    }
+    rels = app_session.graph.get_relationship(
+        {
+            "src_label": "Data",
+            "src_props": {"app_ctx_id": app_session.appctx_id, "name": WHITE_BOARD},
+            "rel_types": ["SUBHEADING"],
+            "hop_num": 1
+        }
+    )
+
+    if len(rels) == 0:
+        return {"status": "error", "type": "markdown", "data": "filename is not found!"}
+
+    embedding_list = []
+    for _, _, node in rels:
+        title = node.get("title")
+        content = node.get("content")
+        if isinstance(content, list):
+            content = "".join(item.get("content", "") for item in content)
+        if not content:
+            continue
+        prompt = prompt_template
+        prompt = prompt.replace("node_name", title)
+        prompt = prompt.replace("node_content", content)
+
+        answer_mk = await async_chat(prompt)
+        answer_str = re.sub(r'^```(?:json)?\s*|\s*```$', '', answer_mk.strip(), flags=re.MULTILINE)
+        answer_json = json.loads(answer_str)
+
+        new_node_data = {
+            "name": title,
+            "content": [{"type": "markdown", "content": answer_mk}],
+            **node_data,
+            **answer_json
+        }
+        new_node = app_session.graph.add_node("Data", new_node_data)
+        app_session.graph.add_relationship(
+            "Data",
+            root_node['node_id'],
+            "SUBHEADING",
+            "Data",
+            new_node['node_id']
+        )
+        fields = [
+            "追偿处理",
+            "损失状况描述",
+            "可能导致原因",
+            "是否淡水或海水损",
+            "事故经过",
+            "损失原因"
+        ]
+        embedding_content = []
+        for field in fields:
+            value = answer_json.get(field, "")
+            embedding_content.append(f"{field}: {value}")
+        embedding_content = "\n".join(embedding_content)
+
+        if not embedding_content.strip():
+            continue
+
+        data_vecs = hf_client.embedding(embedding_content)
+        embedding_list.append({
+            "node_id": new_node['node_id'],
+            "node_content": embedding_content,
+            "node_content_vecs": data_vecs
+        })
+
+    with open(app_session.app_dir / app_session.appctx_id / "embedding", "w") as f:
+        f.write(json.dumps(embedding_list, ensure_ascii=False, indent=2))
+
+    return {"status": "successfully", "data": f"{root_node['name']}", "type": "tree"}
+
+
+async def query_memgraph(app_session, query, query_user):
+    query_node_list = app_session.graph.execute(query, None)
+    query_node_id_list = [node["node_id"] for node in query_node_list]
+    case_num = len(query_node_id_list)
+    query_node_data = {
+        "app_id": app_session.app_id,
+        "agent_id": app_session.agent_id,
+        "io_data_id": app_session.io_data_id,
+        "app_ctx_id": app_session.appctx_id,
+        "type": "case",
+        "name": "Query_Result_" + app_session.appctx_id
+    }
+    query_node_list = app_session.graph.get_node("Data", query_node_data)
+    if len(query_node_list) > 0:
+        query_node = query_node_list[0]
+        query_node_content = query_node["content"]
+        query_node_content = list(set(query_node_content) & set(query_node_id_list))
+        case_num = len(query_node_content)
+        query_node |= {"content": query_node_content}
+        app_session.graph.update_node(
+            "Data",
+            {"node_id": query_node["node_id"]},
+            query_node
+        )
+
+    else:
+        query_node_data |= {"query": query_user, "content": query_node_id_list}
+        app_session.graph.add_node("Data", query_node_data)
+
+    return {"status": "successfully", "data": f"第二步检索案件数量：{case_num}", "type": "markdown"}
+
+def bm25_tokenize(text: str):
+    if not text:
+        return []
+
+    # 去掉字段名和符号
+    text = re.sub(r"[A-Za-z0-9_:：\n]", " ", text)
+
+    words = jieba.lcut(text)
+
+    stopwords = {
+        "的", "了", "和", "及", "存在", "进行", "导致",
+        "车辆", "发生", "出现", "情况", "影响"
+    }
+
+    return [
+        w.strip()
+        for w in words
+        if len(w.strip()) > 1 and w not in stopwords
+    ]
+
+async def query_embedding(app_session, query, query_user,
+                          top_k: int = 10,
+                          w_vec: float = 0.5,
+                          w_bm25: float = 0.5):
+    from utils import hf_client
+    import numpy as np
+    import faiss
+    query_vec_list = hf_client.embedding([query])[0]
+    query_vec = np.array(query_vec_list).astype("float32")
+    query_vec = query_vec.reshape(1, -1)
+
+    with open(app_session.app_dir / app_session.appctx_id / "embedding", 'r', encoding='utf-8') as f:
+        embeddings_data = json.load(f)
+
+    node_ids = [item['node_id'] for item in embeddings_data]
+    node_contents = [item['node_content'] for item in embeddings_data]
+    vectors = [item['node_content_vecs'][0] for item in embeddings_data]
+    vectors = np.vstack(vectors).astype("float32")
+    dimension = vectors.shape[1]
+
+    index = faiss.IndexFlatL2(dimension)
+    index.add(vectors)
+
+    D, I = index.search(query_vec, len(node_ids))
+
+    max_d = float(np.max(D[0])) + 1e-6
+    vec_scores = {
+        idx: 1.0 - (dist / max_d)
+        for dist, idx in zip(D[0], I[0])
+    }
+
+    # ---------- BM25 ----------
+    tokenized_corpus = [bm25_tokenize(node_content) for node_content in node_contents]
+    bm25 = BM25Okapi(tokenized_corpus)
+
+    query_tokens = bm25_tokenize(query)
+    bm25_raw = bm25.get_scores(query_tokens)
+
+    max_bm25 = max(bm25_raw) + 1e-6
+    bm25_scores = {
+        idx: score / max_bm25
+        for idx, score in enumerate(bm25_raw)
+    }
+
+    results = []
+    for idx in range(len(node_ids)):
+        final_score = (
+                w_vec * vec_scores.get(idx, 0.0)
+                + w_bm25 * bm25_scores.get(idx, 0.0)
+        )
+        results.append({
+            "node_id":node_ids[idx],
+            "node_content": node_contents[idx],
+            "vec_score":vec_scores.get(idx, 0.0),
+            "bm25_score": bm25_scores.get(idx, 0.0),
+            "final_score": final_score
+        })
+    results.sort(key=lambda x: x["final_score"], reverse=True)
+    min_score = 0
+    query_node_ids = []
+    for result in results:
+        final_score = result["final_score"]
+        vec_score = result["vec_score"]
+        bm25_score = result["bm25_score"]
+        print(f"final_score = {final_score},vec_score = {vec_score},bm25_score = {bm25_score}")
+        print(result["node_content"])
+        print("------------------------------------------------")
+        if min_score == 0:
+            min_score = final_score * 0.5
+        if final_score > min_score:
+            query_node_ids.append(node_ids[idx])
+
+    case_num = len(query_node_ids)
+    query_node_data = {
+        "app_id": app_session.app_id,
+        "agent_id": app_session.agent_id,
+        "io_data_id": app_session.io_data_id,
+        "app_ctx_id": app_session.appctx_id,
+        "type": "case",
+        "name": "Query_Result_" + app_session.appctx_id
+    }
+    query_node_list = app_session.graph.get_node("Data", query_node_data)
+    if len(query_node_list) > 0:
+        query_node = query_node_list[0]
+        query_node_content = query_node["content"]
+        query_node_content = list(set(query_node_content) & set(query_node_ids))
+        case_num = len(query_node_content)
+        query_node |= {"content": query_node_content}
+        app_session.graph.update_node(
+            "Data",
+            {"node_id": query_node["node_id"]},
+            query_node
+        )
+    else:
+        query_node_data |= {"query": query_user, "content": query_node_ids}
+        app_session.graph.add_node("Data", query_node_data)
+
+    return {"status": "successfully", "data": f"第一步检索案件数量：{case_num}", "type": "markdown"}
+
+async def query_vllm(app_session):
+    from utils.iv3_client import async_chat
+
+    query_node_data = {
+        "app_id": app_session.app_id,
+        "agent_id": app_session.agent_id,
+        "io_data_id": app_session.io_data_id,
+        "app_ctx_id": app_session.appctx_id,
+        "type": "case",
+        "name": "Query_Result_" + app_session.appctx_id
+    }
+    query_node_list = app_session.graph.get_node("Data", query_node_data)
+    if len(query_node_list) == 0:
+        return {"status": "error", "data": f"检索异常", "type": "markdown"}
+    query_node = query_node_list[0]
+    query_str = query_node["query"]
+    node_id_list = query_node["content"]
+    query = """
+MATCH (n:Data {type: 'case'})
+WHERE n.node_id IN $node_ids
+RETURN n
+    """
+    node_list = app_session.graph.execute(query, {"node_ids":node_id_list})
+    case_data_list = []
+    for node in node_list:
+        content = node.get("content")
+        if isinstance(content, list):
+            content = "".join(item.get("content", "") for item in content)
+        case_data_list.append(content)
+
+    if len(case_data_list) == 0:
+        return {"status": "error", "data": f"未检索到案件数据", "type": "markdown"}
+
+    case_data_str = "\n".join(case_data_list)
+    prompt = f"""根据以下事故案例数据，结合你的专业知识，针对用户的问题进行详细解答。
+用户的问题是：{query_str}
+事故案例数据如下：
+{case_data_str}
+"""
+    app_session.write_log(f"query_vllm,prompt = {prompt}")
+    # from llm.vllm import deepseek32
+    # answer = await deepseek32.query(prompt)
+    # answer = await async_chat(prompt)
+    from utils.iv3_client import qwen_chat
+    answer = await qwen_chat(prompt)
+    return {"status": "successfully", "data": f"{answer}", "type": "markdown"}
+
 
 def tool_dev():
     id_pairs = [
@@ -246,45 +565,11 @@ def tool_dev():
 if __name__ == "__main__":
     from mcp_bus.mcp_session import MCPSession
 
-    #read
-    # ids = {
-    #     "app_id": 'hvt62t1fzope',
-    #     "agent_id": '9osaor9espl5',
-    #     "app_ctx_id": 'b1xwa8t4uwgd',
-    #     "io_data_id": 'zrir9kd0rvl5'
-    # }
-
-
-    # agent merge
-    # ids = {
-    #     "app_id": 'col0550i8m55',
-    #     "agent_id": 'l9es6m0cuhxy',
-    #     "app_ctx_id": 'nbg91c03y719',
-    #     "io_data_id": 'dd185gxquov5'
-    # }
-
-
-    # # agent write doc
-    # ids = {
-    #     "app_id": 'hvt62t1fzope',
-    #     "agent_id": '9osaor9espls',
-    #     "app_ctx_id": 'b1xwa8t4uwgd',
-    #     "io_data_id": 'zrir9kd0rvlu'
-    # }
-
-    # pany测试  read_docs_from_dir
-    # ids = {
-    #     "app_id": 'qdy75adu56xw',
-    #     "agent_id": 'cyen1ky0gbum',
-    #     "app_ctx_id": 'mfrd2jqinfv3',
-    #     "io_data_id": 'umdk49lz7tkg'
-    # }
-
     ids = {
-        "app_id": 'qdy75adu56xw',
-        "agent_id": 'it1lfm8qvqsd',
-        "app_ctx_id": 'mfrd2jqinfv3',
-        "io_data_id": '5c9yisdztjoz'
+        "app_id": '1ilzww2occ0u',
+        "agent_id": '2e3brucv3siv',
+        "app_ctx_id": 'wu317f9eli08',
+        "io_data_id": 'l6xw14kcpsc9'
     }
 
     roots = [
@@ -307,7 +592,7 @@ if __name__ == "__main__":
             })
 
     app_session = MCPSession(roots, None)
-    clear_data_node(app_session)
+    # clear_data_node(app_session)
     app_session.app_dir = Path("/is_kb") / "application" / app_session.app_id #/ app_session.appctx_id
 
     import asyncio
@@ -315,6 +600,6 @@ if __name__ == "__main__":
     # ret = asyncio.run(read_docs_from_dir(app_session, "upload", ".docx"))
     # ret = asyncio.run(graph_merge(app_session, "分子公司月报", 1, "月报汇总"))
     # ret = asyncio.run(write_graph_to_docx(app_session, "工程信息月报.docx", "2025年8月工程信息月报（工程管理部）.docx"))
-    ret = asyncio.run(graph_copy_to(app_session, "耀荣", "较大项目::工程简介", "较大项目_耀荣"))
+    ret = asyncio.run(query_embedding(app_session, "火灾原因", "请列举2021—2025年因火灾原因导致的事故案例，并计算平均理算金额。"))
 
     print(ret)

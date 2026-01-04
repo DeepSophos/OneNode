@@ -238,6 +238,14 @@ class GraphQuery:
     def __init__(self):
         pass
 
+    def execute(self, query_str, param=None):
+        with GraphService() as gs:
+            if param is None:
+                node_list = gs.execute_query(query_str)
+            else:
+                node_list = gs.execute_query(query_str, param)
+        return [self.decode_node(i['n'].properties | {'label': list(i['n'].labels)}) for i in node_list]
+
     def list_all_node(self):
         with GraphService() as gs:
             node_list = gs.execute_query('MATCH (n) RETURN n')

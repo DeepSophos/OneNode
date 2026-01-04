@@ -122,71 +122,86 @@ def extract_images_from_paragraph(app_id, app_ctx_id, paragraph, assets_dir, ima
     return image_counter, entries
 
 def create_tree_structure(app_id, app_ctx_id, docx_file, assets_dir=None):
-    doc = Document(str(docx_file))
-    doc_path = Path(docx_file)
-    assets_dir = Path(assets_dir) if assets_dir else doc_path.with_name(f"assets")
-    assets_dir.mkdir(parents=True, exist_ok=True)
     # 初始化树结构和当前节点栈
     root = {"title": f"{docx_file.name}", "level": 0, "content": [], "children": [], 'type': 'filename', 'company': ''}
     current_stack = [root]
 
-    def get_level(paragraph):
-        if is_heading(paragraph):
-            level = get_heading_level(paragraph) or 0
-            return True, level
-        return False, 0
+    if docx_file.suffix.lower() in ['.pdf']:
+        import pymupdf
+        doc = pymupdf.open(docx_file)
+        content = ""
+        for i, page in enumerate(doc):
+            content = content + page.get_text("text")
+        doc.close()
+        current_stack[-1]["content"].append({"type": "markdown", "content": content})
+    elif docx_file.suffix.lower() in ['.docx', '.doc']:
+        doc = Document(str(docx_file))
+        doc_path = Path(docx_file)
+        assets_dir = Path(assets_dir) if assets_dir else doc_path.with_name(f"assets")
+        assets_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_block_xpath(block):
-        element = getattr(block, "_p", None)
-        if element is None:
-            element = getattr(block, "_tbl", None)
-        if element is None:
-            element = block._element  # 兜底
-        return element.getroottree().getpath(element)
+        def get_level(paragraph):
+            if is_heading(paragraph):
+                level = get_heading_level(paragraph) or 0
+                return True, level
+            return False, 0
 
-    for block in iter_block_items(doc):
+        def get_block_xpath(block):
+            element = getattr(block, "_p", None)
+            if element is None:
+                element = getattr(block, "_tbl", None)
+            if element is None:
+                element = block._element  # 兜底
+            return element.getroottree().getpath(element)
 
-        block_xpath = get_block_xpath(block)
+        for block in iter_block_items(doc):
 
-        if isinstance(block, Table):
-            markdown, image_counter = table_to_markdown(app_id, app_ctx_id, block, assets_dir, doc_path.stem)
-            if markdown and current_stack:
-                current_stack[-1]["content"].append({"type": "table_image" if image_counter>0 else "table", "content": markdown, "file_name": f"{docx_file.parent.name}/{docx_file.name}", "xpath": block_xpath})
-            continue
+            block_xpath = get_block_xpath(block)
 
-        if not isinstance(block, Paragraph):
-            continue
+            if isinstance(block, Table):
+                markdown, image_counter = table_to_markdown(app_id, app_ctx_id, block, assets_dir, doc_path.stem)
+                if markdown and current_stack:
+                    current_stack[-1]["content"].append(
+                        {"type": "table_image" if image_counter > 0 else "table", "content": markdown,
+                         "file_name": f"{docx_file.parent.name}/{docx_file.name}", "xpath": block_xpath})
+                continue
 
-        style = block.style.name
-        text = block.text.strip()
-        match = re.search(r'填报单位[:：](.*)', text)
-        if match:
-            root["company"] = match.group(1).strip()
+            if not isinstance(block, Paragraph):
+                continue
 
-        is_title, level = get_level(block)
-        if is_title:
-            # 创建新节点
-            node = {"title": text, "level": level, "style": style, "type": "title", "file_name": f"{docx_file.parent.name}/{docx_file.name}", "xpath": block_xpath, "content": [], "children": []}
-            while current_stack and current_stack[-1]["level"] >= level:
-                current_stack.pop()
+            style = block.style.name
+            text = block.text.strip()
+            match = re.search(r'填报单位[:：](.*)', text)
+            if match:
+                root["company"] = match.group(1).strip()
 
-            # 将新节点添加到父节点的children
-            if current_stack:
-                current_stack[-1]["children"].append(node)
+            is_title, level = get_level(block)
+            if is_title:
+                # 创建新节点
+                node = {"title": text, "level": level, "style": style, "type": "title",
+                        "file_name": f"{docx_file.parent.name}/{docx_file.name}", "xpath": block_xpath, "content": [],
+                        "children": []}
+                while current_stack and current_stack[-1]["level"] >= level:
+                    current_stack.pop()
 
-            # 更新当前栈
-            current_stack.append(node)
+                # 将新节点添加到父节点的children
+                if current_stack:
+                    current_stack[-1]["children"].append(node)
 
-        else:
-            # 非标题内容添加到当前节点的content
-            if current_stack:
-                image_counter, image_entries = extract_images_from_paragraph(
-                    app_id, app_ctx_id, block, assets_dir, doc_path.stem
-                )
-                for image_entry in image_entries:
-                    current_stack[-1]["content"].append({"type": "image", "content": f"![image]({image_entry['url']})", "xpath": block_xpath})
-                if text:
-                    current_stack[-1]["content"].append({"type": "text", "content": text, "xpath": block_xpath})
+                # 更新当前栈
+                current_stack.append(node)
+
+            else:
+                # 非标题内容添加到当前节点的content
+                if current_stack:
+                    image_counter, image_entries = extract_images_from_paragraph(
+                        app_id, app_ctx_id, block, assets_dir, doc_path.stem
+                    )
+                    for image_entry in image_entries:
+                        current_stack[-1]["content"].append(
+                            {"type": "image", "content": f"![image]({image_entry['url']})", "xpath": block_xpath})
+                    if text:
+                        current_stack[-1]["content"].append({"type": "text", "content": text, "xpath": block_xpath})
     return root
 
 

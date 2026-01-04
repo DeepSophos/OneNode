@@ -52,33 +52,6 @@
 			} catch (error) {
 				// IndexedDB Not Found
 			}
-
-			//scope
-			await scopes.set(JSON.parse(await getKnowledgeScopes(localStorage.token)))
-			const localSettings = JSON.parse(localStorage.getItem('settings'));
-			let validScopes = [];
-			if (localSettings?.scopes?.length > 0) {
-				if ($scopes.length === 0) {
-					localStorage.removeItem('settings');
-				} else {
-					const currentScopeNames = new Set($scopes.map(s => s.name));
-					validScopes = localSettings.scopes.filter(scope =>
-						currentScopeNames.has(scope)
-					);
-					if (validScopes.length > 0) {
-						localStorage.setItem('settings', JSON.stringify({ scopes: validScopes }));
-					}
-				}
-			}
-			if (validScopes.length === 0 && $scopes.length > 0) {
-				localStorage.setItem('settings', JSON.stringify({
-					scopes: [$scopes[0].name]
-				}));
-			}
-			await settings.set(JSON.parse(localStorage.getItem('settings') ?? '{}'));
-
-			await tags.set(await getAllChatTags(localStorage.token));
-
 			document.addEventListener('keydown', function (event) {
 				const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
 				// Check if the Shift key is pressed

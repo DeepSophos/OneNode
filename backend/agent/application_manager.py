@@ -141,8 +141,8 @@ class Application:
         self.runner = AppRunContext(self)
         self.node_id = app_node['node_id']
         self.app_node = app_node
-        self.python_path = Path(os.path.dirname(__file__)).parent.parent
-        self.mcp_path = Path(os.path.dirname(__file__)).parent.parent / "mcp_bus" / "mcp_server.py"
+        self.python_path = Path(os.path.dirname(__file__)).parent
+        self.mcp_path = Path(os.path.dirname(__file__)).parent / "mcp_bus" / "mcp_server.py"
         self.data_path = Path(IS_KB_PATH) / "Application"
 
         self.transport = StdioTransport(
@@ -224,8 +224,11 @@ class Application:
 
     async def run(self, options=None):
         self.update_heads()
+        run_nodes = self.heads
+        if "start_node_name" in (options or {}):
+            run_nodes = [node for node in self.heads if node.name == options["start_node_name"]]
         self.ctx = self.runner.new_run(self.incomes)
-        asyncio.create_task(self.run_agents_with_terminate(self.ctx, self.heads))
+        asyncio.create_task(self.run_agents_with_terminate(self.ctx, run_nodes))
         return self.data_pipe.frontend_event_generator()
 
     def get_data_pipe(self):

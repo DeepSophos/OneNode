@@ -439,9 +439,7 @@
                 {nodes}
                 fitView
                 {fitViewOptions}
-                minZoom="1"
-                snapToGrid={true}
-                snapGrid={[15, 15]}
+                minZoom="0.5"
                 onconnect={onConnect}
                 ondelete={onDelete}
                 on:paneclick={onPaneClick}
