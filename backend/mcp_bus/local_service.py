@@ -211,9 +211,16 @@ async def read_docx_tmpl(app_session, tmpl_filename):
 async def extract_rule_field(app_session):
     from utils.iv3_client import async_chat
     from utils import hf_client
-    root_node = app_session.add_node(
-        {"name": "CASEROOT"}
-    )
+    root_node_data={
+        "app_id": app_session.app_id,
+        "name": "CASEROOT"
+    }
+
+    root_node_list = app_session.graph.get_node("Data", root_node_data)
+    if len(root_node_list) > 0:
+        root_node = root_node_list[0]
+    else:
+        root_node = app_session.graph.add_node("Data", root_node_data)
 
     prompt_template = """
 从{node_name}中提取以下字段：
@@ -251,9 +258,6 @@ node_content
 """
     node_data = {
         "app_id": app_session.app_id,
-        "agent_id": app_session.agent_id,
-        "io_data_id": app_session.io_data_id,
-        "app_ctx_id": app_session.appctx_id,
         "type": "case"
     }
     rels = app_session.graph.get_relationship(
@@ -266,7 +270,7 @@ node_content
     )
 
     if len(rels) == 0:
-        return {"status": "error", "type": "markdown", "data": "filename is not found!"}
+        return {"status": "error", "type": "markdown", "data": "file is not found!"}
 
     embedding_list = []
     for _, _, node in rels:
@@ -322,8 +326,20 @@ node_content
             "node_content_vecs": data_vecs
         })
 
-    with open(app_session.app_dir / app_session.appctx_id / "embedding", "w") as f:
-        f.write(json.dumps(embedding_list, ensure_ascii=False, indent=2))
+    embedding_path = app_session.app_dir / "embedding"
+    embedding_data = []
+    if embedding_path.exists():
+        try:
+            with open(embedding_path, 'r', encoding='utf-8') as f:
+                embedding_data = json.load(f)
+                embedding_data.extend(embedding_list)
+        except Exception as e:
+            embedding_data = embedding_list
+    else:
+        embedding_data = embedding_list
+
+    with open(app_session.app_dir / "embedding", "w") as f:
+        f.write(json.dumps(embedding_data, ensure_ascii=False, indent=2))
 
     return {"status": "successfully", "data": f"{root_node['name']}", "type": "tree"}
 
@@ -390,7 +406,7 @@ async def query_embedding(app_session, query, query_user,
     query_vec = np.array(query_vec_list).astype("float32")
     query_vec = query_vec.reshape(1, -1)
 
-    with open(app_session.app_dir / app_session.appctx_id / "embedding", 'r', encoding='utf-8') as f:
+    with open(app_session.app_dir / "embedding", 'r', encoding='utf-8') as f:
         embeddings_data = json.load(f)
 
     node_ids = [item['node_id'] for item in embeddings_data]
@@ -483,28 +499,27 @@ async def query_vllm(app_session):
 
     query_node_data = {
         "app_id": app_session.app_id,
-        "agent_id": app_session.agent_id,
-        "io_data_id": app_session.io_data_id,
-        "app_ctx_id": app_session.appctx_id,
         "type": "case",
-        "name": "Query_Result_" + app_session.appctx_id
     }
-    query_node_list = app_session.graph.get_node("Data", query_node_data)
+    query_node_list = app_session.graph.get_node("Data",
+         query_node_data | {
+             "agent_id": app_session.agent_id,
+             "io_data_id": app_session.io_data_id,
+             "app_ctx_id": app_session.appctx_id,
+             "name": "Query_Result_" + app_session.appctx_id
+         })
     if len(query_node_list) == 0:
         return {"status": "error", "data": f"检索异常", "type": "markdown"}
     query_node = query_node_list[0]
     query_str = query_node["query"]
     node_id_list = query_node["content"]
-    query = """
-MATCH (n:Data {type: 'case'})
-WHERE n.node_id IN $node_ids
-RETURN n
-    """
-    node_list = app_session.graph.execute(query, {"node_ids":node_id_list})
+    node_list = app_session.graph.get_node("Data", query_node_data, f"n.node_id IN ['{'''','''.join(node_id_list)}']")
     case_data_list = []
     for node in node_list:
         content = node.get("content")
         if isinstance(content, list):
+            for item in content:
+                app_session.write_log(item.get("content", ""))
             content = "".join(item.get("content", "") for item in content)
         case_data_list.append(content)
 
@@ -566,10 +581,10 @@ if __name__ == "__main__":
     from mcp_bus.mcp_session import MCPSession
 
     ids = {
-        "app_id": '1ilzww2occ0u',
-        "agent_id": '2e3brucv3siv',
-        "app_ctx_id": 'wu317f9eli08',
-        "io_data_id": 'l6xw14kcpsc9'
+        "app_id": '680icft5uw3o',
+        "agent_id": 'qy5ebmpg3cuq',
+        "app_ctx_id": 'e2uw1vmy5gwt',
+        "io_data_id": '3o1xgmyy9w60'
     }
 
     roots = [
@@ -600,6 +615,7 @@ if __name__ == "__main__":
     # ret = asyncio.run(read_docs_from_dir(app_session, "upload", ".docx"))
     # ret = asyncio.run(graph_merge(app_session, "分子公司月报", 1, "月报汇总"))
     # ret = asyncio.run(write_graph_to_docx(app_session, "工程信息月报.docx", "2025年8月工程信息月报（工程管理部）.docx"))
-    ret = asyncio.run(query_embedding(app_session, "火灾原因", "请列举2021—2025年因火灾原因导致的事故案例，并计算平均理算金额。"))
+    # ret = asyncio.run(query_embedding(app_session, "火灾原因", "请列举2021—2025年因火灾原因导致的事故案例，并计算平均理算金额。"))
+    ret = asyncio.run(query_vllm(app_session))
 
     print(ret)

@@ -164,6 +164,8 @@ inputSchema: {v['inputSchema']}
                 log.info(prompt)
                 await self.print('agent', self.config['task'])
                 answer = await async_chat(prompt)
+                # from utils.iv3_client import qwen_chat
+                # answer = await qwen_chat(prompt)
                 await self.print('llm', answer or '调用错误')
 
                 log.info(answer)
@@ -203,6 +205,8 @@ inputSchema: {v['inputSchema']}
                             tool_called = await call_tool(call, ret_list)
                     elif isinstance(json_data, dict):
                         tool_called = await call_tool(call, ret_list)
+
+                await mcp_client.close()
 
             control_flow = None
             if tool_called:

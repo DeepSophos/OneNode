@@ -138,13 +138,10 @@ class AgentGetDataForm(BaseModel):
     content: str
 
 
-@app.get("/application/run/{app_id}")
-async def application_run(app_id: str, node_name: str = "", request: Request = None, user=Depends(get_current_user)):
+@app.post("/application/run/{app_id}")
+async def application_run(app_id: str, options: Optional[dict] = None, request: Request = None, user=Depends(get_current_user)):
     try:
         agent_app = app.state.app_man.get_application(app_id)
-        options = {}
-        if node_name :
-            options.add("start_node_name", node_name)
         response = await agent_app.run(options=options)
         return StreamingResponse(
             response,

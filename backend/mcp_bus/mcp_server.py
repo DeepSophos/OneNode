@@ -30,6 +30,8 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
     """
     **上传文件**这个工具用于请求用户上传指定格式的文件到指定的目录。其中，标题为对话框的标题，upload_dir用于指定保存上传文件的目录。
     """
+    from fastmcp.client.elicitation import ElicitResult
+
     roots = await ctx.list_roots()
     app_session = MCPSession([str(root.uri) for root in roots], ctx)
 
@@ -48,6 +50,10 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
         message=json.dumps(file_upload_control), ## user message box
         response_type=FrontEndMessage
     )
+
+    if user_feedback.action in ["cancel" ,"refuse"]:
+        return json.dumps({})
+
     feedback_data = json.loads(user_feedback.data.response)
     # logging.info(f"from mcp server: {feedback_data}")
     # await end_client_elicit(ctx)

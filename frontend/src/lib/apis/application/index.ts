@@ -581,17 +581,22 @@ export const runAgent = async (
 
 export const runApp = async (
   app_id: string,
+  node_name:string,
   authToken: string
 ) => {
   const url = `${AGENT_API_BASE_URL}/application/run/${app_id}`;
 
+  const params = {
+    start_node_name: node_name
+  };
   try {
     const response = await fetch(url, {
-      method: 'get',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${authToken}`
-      }
+      },
+      body: JSON.stringify(params)
     });
 
     if (!response.ok) {

@@ -7,6 +7,7 @@
     import {toast} from "svelte-sonner";
     import ShowControl from './ShowControl.svelte';
     import ShowToolControl from './ShowToolControl.svelte';
+    import SelectRunNode from './SelectRunNode.svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -16,25 +17,15 @@
     export let messages = [];
     export let toolMap = new Map();
     export let closeBtn = false;
+    export let onCheckRunNode = () => {};
 
     let messagesEnd; // 滚动锚点元素
     let messagesContainer; // 消息列表容器（用于判断是否有滚动条）
     let isRunning = false;
     let showMessages=new Set();
-
-    $: if (app_id || agent_id || toolMap.size > 0 ) {
-        if(messages.length === 0){
-            const storedMessages = JSON.parse(localStorage.getItem(`run_data_${app_id}_${agent_id}`)) || [];
-            if(storedMessages.length===0 && runable && !isRunning && agent_id === ""){
-                runApplication()
-            }else {
-                 messages = JSON.parse(localStorage.getItem(`run_data_${app_id}_${agent_id}`)) || [];
-                 setTimeout(scrollToBottom, 50);
-            }
-        }else {
-            setTimeout(scrollToBottom, 50);
-        }
-    }
+    let isShowSelectNode = false;
+    let showSelectNode = false;
+    let selectedRunNodes = null;
 
     $: if (messages.length > 0) setTimeout(scrollToBottom, 50);
 
@@ -47,7 +38,19 @@
     }
 
     onMount(() => {
-
+        if (app_id || agent_id || toolMap.size > 0) {
+            if (messages.length === 0) {
+                const storedMessages = JSON.parse(localStorage.getItem(`run_data_${app_id}_${agent_id}`)) || [];
+                if (storedMessages.length === 0 && runable && !isRunning && agent_id === "") {
+                    runApplication()
+                } else {
+                    messages = JSON.parse(localStorage.getItem(`run_data_${app_id}_${agent_id}`)) || [];
+                    setTimeout(scrollToBottom, 50);
+                }
+            } else {
+                setTimeout(scrollToBottom, 50);
+            }
+        }
     });
 
     function showMessageDetail(msgId) {
@@ -81,13 +84,21 @@
         dispatch('close');
     }
 
-    function runApplication() {
+    function runApplication(runNode) {
         isRunning = true;
         messages=[];
         localStorage.setItem(`run_data_${app_id}_${agent_id}`, JSON.stringify(messages)); // 清空存储
         if (agent_id == "") {
+            if (runNode == undefined) {
+                selectedRunNodes = onCheckRunNode();
+                if (selectedRunNodes.length > 1) {
+                    showSelectNode = true;
+                    return
+                }
+            }
             runApp(
                 app_id,
+                runNode?.data.name,
                 localStorage.getItem("token"),
             ).then(async (res) => {
                 parseStream(res.body, handleLine);
@@ -197,7 +208,7 @@
     <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
         <button
                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm shadow"
-                on:click={runApplication}
+                on:click={()=>{runApplication()}}
                 disabled={!runable || isRunning}
                 title="{!runable?'不可运行，请检查设置。':''}"
                 aria-label="运行"
@@ -330,6 +341,21 @@
         on:close={()=>{ showModal = false; }}
     />
 {/if}
+{#if showSelectNode}
+    <SelectRunNode
+        isOpen = {showSelectNode}
+        availableNodes = {selectedRunNodes}
+        onSelect={(node)=>{
+            showSelectNode = false;
+            runApplication(node);
+        }}
+        onClose={()=>{
+            showSelectNode = false;
+            isRunning = false;
+        }}
+    />
+{/if}
+
 <style>
     /* 流式输出动画点点 */
     .streaming-dots span {

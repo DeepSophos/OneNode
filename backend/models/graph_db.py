@@ -268,20 +268,15 @@ class GraphQuery:
                 ret |= {k: v}
         return ret
 
-    def get_node(self, label, query_info=None):
+    def get_node(self, label, query_info=None, query_where=None):
         """
         query_info:  None, if we get all node with specified label
                      dict, if we need to match all node with same properties defined by the dict.
         """
-        with GraphService() as gs:
+        with (GraphService() as gs):
             param = {'label': label}
-            if not query_info:
-                cypher = 'MATCH (n:$label) RETURN n'
-            # elif query_info.get('node_id', None):
-            #     cypher = 'MATCH (n:$label {node_id:$param}) RETURN n'
-            #     param |= {'param': query_info['node_id']}
-            # else:
-            else:
+            cypher = 'MATCH (n:$label'
+            if query_info:
                 kvs = []
                 for k, v in query_info.items():
                     if isinstance(v, str):
@@ -291,11 +286,13 @@ class GraphQuery:
                 params = "{"
                 params += ",".join(kvs)
                 params += "}"
-                cypher = f'MATCH (n:$label {params}) RETURN n'
-            if param is None:
-                n = gs.execute_query(cypher)
-            else:
-                n = gs.execute_query(cypher, param)
+                cypher += f' {params} '
+            cypher +=')'
+            if not query_where is None:
+                cypher+= f' WHERE {query_where} '
+            cypher+=' RETURN n'
+
+            n = gs.execute_query(cypher, param)
 
         return [self.decode_node(i['n'].properties|{'label': list(i['n'].labels)}) for i in n]
 

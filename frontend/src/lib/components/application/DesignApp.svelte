@@ -1,7 +1,7 @@
 <script>
     import {onDestroy, onMount} from "svelte";
     import {writable,get} from 'svelte/store';
-    import {SvelteFlow,useSvelteFlow, Controls, Background, MiniMap, MarkerType} from '@xyflow/svelte';
+    import {SvelteFlow,useSvelteFlow, Controls, Background, MiniMap, MarkerType, getIncomers} from '@xyflow/svelte';
     import '@xyflow/svelte/dist/style.css';
     import CustomNode from './CustomNode.svelte';
     import NodePanel from './NodePanel.svelte';
@@ -319,6 +319,12 @@
         }
     }
 
+    function checkRunNode()
+    {
+        let start_nodes = $nodes.filter(node => getIncomers(node, $nodes, $edges).length === 0);
+        return start_nodes;
+    }
+
     $:if ($theme) colorMode = localStorage.theme && !localStorage.theme.includes('dark') ? 'light' : 'dark';
     onMount(()=>{
         initGraph();
@@ -477,6 +483,7 @@
                         agent_id=""
                         runable="{$nodes.every(n => n.data.task !== '')}"
                         {toolMap}
+                        onCheckRunNode="{checkRunNode}"
                         on:close={() => showRunAppPanel = false}
                 />
             </div>
