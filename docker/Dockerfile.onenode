@@ -1,0 +1,41 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:libreoffice/ppa && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y \
+    wget git libreoffice python3.11 locales \
+    fonts-noto-cjk fonts-wqy-zenhei fonts-wqy-microhei fonts-arphic-uming
+
+RUN echo "zh_CN.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen zh_CN.UTF-8
+
+ADD build /build
+
+# ADD fonts /usr/share/fonts
+
+WORKDIR /OneNode
+
+COPY backend/requirements.txt .
+
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
+    && bash miniconda.sh -b -u -p /miniconda3 \
+    && /miniconda3/bin/conda init bash
+
+
+RUN /bin/bash -c "source /miniconda3/bin/activate \
+    && conda clean --all --yes \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r \
+    && conda install -y python=3.11.9"
+
+RUN /bin/bash -c "source /miniconda3/bin/activate \
+    && conda clean --all --yes \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r \
+    && pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
+    && pip install -r requirements.txt"
+
+ADD backend .
+
+CMD ["/usr/bin/bash", "start.sh"]
