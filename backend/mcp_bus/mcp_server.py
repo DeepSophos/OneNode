@@ -52,7 +52,7 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
     )
 
     if user_feedback.action in ["cancel" ,"refuse"]:
-        return json.dumps({})
+        return json.dumps({"status": "cancel"})
 
     feedback_data = json.loads(user_feedback.data.response)
     # logging.info(f"from mcp server: {feedback_data}")
@@ -82,10 +82,14 @@ async def input_query(title: str, ctx: Context) -> str:
         message=json.dumps(user_query_control),
         response_type=FrontEndMessage
     )
+
+    if user_feedback.action in ["cancel" ,"refuse"]:
+        return json.dumps({"status": "cancel"})
+
     feedback_data = json.loads(user_feedback.data.response)
     ctx.info(feedback_data)
 
-    return json.dumps(feedback_data.get("data", {}))
+    return json.dumps(feedback_data.get("data", {"status": "cancel"}))
 
 @mcp.tool
 async def read_docx_from_dir(subdirectory: str, file_format: str, ctx: Context) -> str:

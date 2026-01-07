@@ -46,7 +46,6 @@ class SuperAgent:
                 "INTERVL_URL": main_config.INTERVL_URL,
                 "HF_URL": main_config.HF_URL,
                 "ALIYUN_API_KEY": os.environ.get("ALIYUN_API_KEY", ""),
-
             },
             cwd=str(self.owner().python_path)
         )
@@ -73,7 +72,7 @@ class SuperAgent:
             return content
 
 
-        async def call_tool(call_info, ret_list):
+        async def call_tool(call_info, ret_list, app_ctx):
             tool_name = call_info.get("tool_name")
             if tool_name in tools:
                 t = time.time()
@@ -82,8 +81,11 @@ class SuperAgent:
                 if tool_r is not None:
                     try:
                         out_d = json.loads(tool_r.content[0].text or '{}')
-                        await self.print("tool", out_d.get('data',""), out_d.get("type","markdown"))
-                        ret_list.append(out_d)
+                        if out_d.get('status', '') == 'cancel':
+                            app_ctx.set_run_state(self.node_id, 'cancel')
+                        else:
+                            await self.print("tool", out_d.get('data',""), out_d.get("type","markdown"))
+                            ret_list.append(out_d)
                     except Exception as e:
                         log.info(f"Failed to call tool: {tool_name}, with: {e}")
                     return True
@@ -202,9 +204,9 @@ inputSchema: {v['inputSchema']}
                     ret_list = []
                     if isinstance(json_data, list):
                         for call in json_data:
-                            tool_called = await call_tool(call, ret_list)
+                            tool_called = await call_tool(call, ret_list, app_ctx)
                     elif isinstance(json_data, dict):
-                        tool_called = await call_tool(call, ret_list)
+                        tool_called = await call_tool(call, ret_list, app_ctx)
 
                 await mcp_client.close()
 
@@ -279,6 +281,8 @@ inputSchema: {v['inputSchema']}
         })
 
     def is_callable(self, app_ctx):
+        if app_ctx.is_canceled():
+            return False
         inp_nodes = self.get_input(app_ctx)
 
         for sub_inp_nodes in inp_nodes:

@@ -38,7 +38,8 @@ class AppRunContext:
         self.incomes = incomes.copy()
         self.run_states = {
             "succeed": defaultdict(int),
-            "failed": defaultdict(int)
+            "failed": defaultdict(int),
+            "cancelled": False
         }
         self.error_messages = {}
         return self
@@ -75,9 +76,22 @@ class AppRunContext:
         return datetime.fromtimestamp(self.node['timestamp']).strftime("%Y-%m-%d %H:%M:%S")
 
     def set_run_state(self, agent_id: str, state: str, error=None):
+        if state == 'cancel':
+            self.run_states['cancelled'] = True
+            return
         self.run_states[state][agent_id] += 1
         if state == "failed":
             self.error_messages[agent_id] = error
+
+    def clear_states(self):
+        self.run_states = {
+            "succeed": defaultdict(int),
+            "failed": defaultdict(int),
+            "cancelled": False
+        }
+
+    def is_canceled(self):
+        return self.run_states.get("cancelled", False)
 
 class ApplicationManager:
     def __init__(self):
@@ -345,6 +359,7 @@ class Application:
             return self.data_pipe.frontend_event_generator()
         if self.ctx is None:
             self.ctx = self.runner.new_run(self.incomes)
+        self.ctx.clear_states()
         asyncio.create_task(run_agent(agent, self.ctx))
         return self.data_pipe.frontend_event_generator()
 
