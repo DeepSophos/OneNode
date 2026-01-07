@@ -23,9 +23,13 @@ def get_client():
     if client:
         return client
     try:
-        log.info(f"connect to iv3 server: {config.INTERVL_URL}/v1")
-        client = OpenAI(api_key="NO_KEY", base_url=f"{config.INTERVL_URL}/v1")
-        model_name = client.models.list().data[0].id
+        if config.CHAT_URL:
+            client = OpenAI(api_key=config.CHAT_API_KEY, base_url=f"{config.CHAT_URL}")
+            model_name = config.CHAT_MODEL_NAME
+        else:
+            log.info(f"connect to iv3 server: {config.INTERVL_URL}/v1")
+            client = OpenAI(api_key="NO_KEY", base_url=f"{config.INTERVL_URL}/v1")
+            model_name = client.models.list().data[0].id
     except Exception as e:
         print(e)
         traceback.print_exc()
@@ -207,51 +211,20 @@ async def async_chat(prompt: str):
         dict: The response from the vLLM server.
     """
     get_client()  #read model name
-    headers = {
-        "Content-Type": "application/json",
-    }
 
-    # Prepare the payload in OpenAI-compliant format
-    payload = {
-        "model": model_name,
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
-        ],
-        "temperature": 0.0,
-    }
-
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.post(f"{config.INTERVL_URL}/v1/chat/completions", headers=headers, json=payload) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    # Extract the generated text from the response
-                    return result["choices"][0]["message"]["content"]
-                else:
-                    error_text = await response.text()
-                    raise Exception(f"Request failed with status {response.status}: {error_text}")
-        except Exception as e:
-            print(f"Error occurred: {e}")
-            return None
-
-async def qwen_chat(prompt: str):
-    from openai import OpenAI
-    import os
-
-    # 初始化OpenAI客户端
-    client = OpenAI(
-        # 如果没有配置环境变量，请用阿里云百炼API Key替换：api_key="sk-xxx"
-        api_key=os.getenv("ALIYUN_API_KEY"),
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    )
-
-    messages = [{"role": "user", "content": prompt}]
-    completion = client.chat.completions.create(
-        model="glm-4.7",  # deepseek-v3.2 glm-4.7 qwen-plus
-        messages=messages
-    )
-
-    return completion.choices[0].message.content
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            ],
+            temperature=0.0,
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"Chat error: {e}")
+        traceback.print_exc()
+        return None
 
 if __name__ == '__main__':
 #     p1 = """

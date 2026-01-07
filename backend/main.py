@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 from agent.main import app as agent_app
 from apps.web.main import app as webui_app
+from apps.backend.main import app as backend_app
 from pydantic import BaseModel
 
 from config import (
@@ -91,7 +92,7 @@ async def check_url(request: Request, call_next):
 
 app.mount("/api/v1", webui_app)
 app.mount("/agents/api/v1", agent_app)
-
+app.mount("/backend/api/v1", backend_app)
 
 @app.get("/api/config")
 async def get_app_config():

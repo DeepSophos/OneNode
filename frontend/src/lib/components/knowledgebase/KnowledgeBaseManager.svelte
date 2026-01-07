@@ -2,7 +2,6 @@
     import {onMount, getContext, tick} from 'svelte';
     import {user, scopes} from "$lib/stores"
     import 'virtual:uno.css'
-    import {KTour} from '@ikun-ui/core';
     import {
         AddScope,
         AddPrivateScope,
@@ -576,40 +575,4 @@
             isAuthor={isAuthor(scopeInfo)}
             on:cancel={()=>{scopeInfo = null;}}
     />
-    <KTour finishBtnText="完成" nextBtnText="下一步" on:close={handleClose} on:finish={handleFinish} open={openTour}
-           placement="right" prevBtnText="上一步" steps={steps}>
-        <!-- 使用具名slot -->
-        <div let:current let:handleNext let:handlePrev slot="footer">
-            <footer class="flex justify-end">
-                <div>
-
-                    {#if current > 0}
-                        <button class="px-2 py-1 text-[10px] border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handlePrev} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {:else}
-                        <!-- 占位元素，保持布局 -->
-                        <button style="visibility: hidden"
-                                class="px-2 py-2 text-xs border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handlePrev} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {/if}
-
-                    {#if current === 1}
-                        <button class="px-2 py-1 text-[10px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handleTourHide}>
-                            不在显示
-                        </button>
-                    {:else}
-                        <button class="px-2 py-1 text-[10px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handleNext}>
-                            下一步
-                        </button>
-                    {/if}
-                </div>
-            </footer>
-        </div>
-    </KTour>
 </div>

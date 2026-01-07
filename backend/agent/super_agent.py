@@ -166,8 +166,6 @@ inputSchema: {v['inputSchema']}
                 log.info(prompt)
                 await self.print('agent', self.config['task'])
                 answer = await async_chat(prompt)
-                # from utils.iv3_client import qwen_chat
-                # answer = await qwen_chat(prompt)
                 await self.print('llm', answer or '调用错误')
 
                 log.info(answer)

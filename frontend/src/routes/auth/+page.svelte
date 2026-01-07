@@ -355,9 +355,9 @@
         </div>
         {#if loginBg == ""}
             <div class="relative z-10 mt-[10vh] px-8 md:px-32 lg:px-52 text-gray-900 text-xl">{systemName}
-                原生知识库系统
+<!--                智点工坊-->
             </div>
-            <div class="relative z-10 h-full mt-[20vh] px-8 md:px-32 lg:px-52">
+            <div class="relative z-10 h-full mt-[20vh] px-8 md:px-32 lg:px-52 hidden">
                 <div class="text-blue-700">
                     <div class="text-2xl">欢迎体验全球领先、易用、高性价比的</div>
                     <div class="text-4xl font-bold">多模态AI原生知识库系统！</div>
@@ -384,7 +384,7 @@
     <div class="w-full md:w-5/12 flex items-center justify-center p-8 bg-white">
         <div class="w-full max-w-md flex flex-col h-[500px]">
             <div class="flex-grow">
-                <h3 class="text-2xl font-medium text-gray-900 mb-8">{systemName}原生知识库系统</h3>
+                <h3 class="text-2xl font-medium text-gray-900 mb-8">{systemName}智点工坊</h3>
                 {#if !isRegisterMode}
                     <div class="flex mb-6 border-b">
                         <button

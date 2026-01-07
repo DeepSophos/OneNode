@@ -2,7 +2,6 @@
     import {v4 as uuidv4} from 'uuid';
     import fileSaver from 'file-saver';
     import 'virtual:uno.css'
-    import {KTour} from '@ikun-ui/core';
 
     const {saveAs} = fileSaver;
     import {goto, invalidateAll} from '$app/navigation';
@@ -284,23 +283,8 @@
                         <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{$i18n.t('User Management')}</span>
                     </button>
                 {/if}
-                <!-- 组织机构 -->
-                {#if $user?.role === 'admin' || $user?.role === 'kbman'}
-                    <button
-                            class="flex items-center w-full px-3 py-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm group"
-                            on:click={() => {
-                        goto('/organization');
-                    }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                             stroke="currentColor"
-                             class="w-5 h-5 mr-3 text-gray-700 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z"/>
-                        </svg>
-                        <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{$i18n.t('Organization Manage')}</span>
-                    </button>
-                {/if}
+
+
                 {#if $sdk_access_token_enabled}
                     <!-- SDK接入凭证 -->
                     <button
@@ -368,83 +352,9 @@
                                 </div>
                             </div>
 
-                            <!-- 套餐信息 -->
-
-                            <div class="mb-6">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{currentPlan.name}</span>
-                                </div>
-
-                                <!-- 资料使用情况 -->
-                                <div class="mb-4">
-                                    <div class="flex justify-between text-xs mb-1">
-                                        <span class="text-gray-600">资料存储</span>
-                                        <span class="text-gray-600">
-                                            {currentPlan.docsUsed} /
-                                            {@html currentPlan.docsSize === -1
-                                                ? '<span class="text-green-400 dark:text-green-600">无限制</span>'
-                                                : currentPlan.docsSize}
-                                        </span>
-                                    </div>
-
-                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="progress-bar bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full"
-                                             style="width: {currentPlan.volume_used_percentage}%"></div>
-                                    </div>
-                                    {#if currentPlan.docsSize != -1}
-                                        <div class="flex justify-end mt-1">
-                                            <span class="text-xs text-gray-500">剩余 {100 - currentPlan.volume_used_percentage}%</span>
-                                        </div>
-                                    {/if}
-                                </div>
-
-                                <!-- 问答次数 -->
-                                <div class="mb-2">
-                                    <div class="flex justify-between text-xs mb-1">
-                                        <span class="text-gray-600">问答次数</span>
-                                        {#if currentPlan.dailyQueries === -1}
-                                            <span class="text-green-400 dark:text-green-600">无限制</span>
-                                        {:else }
-                                            <span class="text-gray-600">{currentPlan.remaining}
-                                                /{currentPlan.dailyQueries}</span>
-                                        {/if}
-                                    </div>
-                                    {#if currentPlan.dailyQueries != -1}
-                                        <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="progress-bar bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full"
-                                                 style="width: {currentPlan.chart_used_percentage}%"></div>
-                                        </div>
-                                        <div class="flex justify-end mt-1">
-                                            <span class="text-xs text-gray-500">剩余 {currentPlan.dailyQueries - currentPlan.remaining}次</span>
-                                        </div>
-                                    {/if}
-                                </div>
-                            </div>
-
                             <!-- 菜单选项 -->
                             <div class="space-y-2">
-                                {#if currentPlan.version === "LIGHTWEIGHT"}
-                                    <a href="#"
-                                       on:click={()=>{
-														showPackageModal = true;
-												}}
-                                       class="menu-item flex items-center p-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                             class="w-5 mr-3">
-                                            <path fill-rule="evenodd"
-                                                  d="M9.315 7.584C12.195 3.883 16.695 1.5 21.75 1.5a.75.75 0 0 1 .75.75c0 5.056-2.383 9.555-6.084 12.436A6.75 6.75 0 0 1 9.75 22.5a.75.75 0 0 1-.75-.75v-4.131A15.838 15.838 0 0 1 6.382 15H2.25a.75.75 0 0 1-.75-.75 6.75 6.75 0 0 1 7.815-6.666ZM15 6.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z"
-                                                  clip-rule="evenodd"/>
-                                            <path d="M5.26 17.242a.75.75 0 1 0-.897-1.203 5.243 5.243 0 0 0-2.05 5.022.75.75 0 0 0 .625.627 5.243 5.243 0 0 0 5.022-2.051.75.75 0 1 0-1.202-.897 3.744 3.744 0 0 1-3.008 1.51c0-1.23.592-2.323 1.51-3.008Z"/>
-                                        </svg>
-                                        <span class="font-medium">升级套餐</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                             class="w-5 ml-auto text-sm text-gray-400">
-                                            <path fill-rule="evenodd"
-                                                  d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z"
-                                                  clip-rule="evenodd"/>
-                                        </svg>
-                                    </a>
-                                {/if}
+
                                 <a href="#"
                                    on:click={()=>{
 													showUpdatePwdModal = true
@@ -536,21 +446,6 @@
         </Tooltip>
     </div>
 </div>
-<KTour finishBtnText="完成" nextBtnText="下一步" on:close={handleClose} on:finish={handleFinish}
-       open={openTour} placement="right"
-       prevBtnText="上一步" {steps}>
-    <!-- 使用具名slot -->
-    <div let:current let:handleNext let:handlePrev slot="footer">
-        <footer class="flex justify-end">
-            <div>
-                <button class="px-2 py-1 text-[10px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        on:click={handleTourHide}>
-                    不在显示
-                </button>
-            </div>
-        </footer>
-    </div>
-</KTour>
 {#key selectedUser}
     <EditUserModal
             bind:show={showUpdatePwdModal}

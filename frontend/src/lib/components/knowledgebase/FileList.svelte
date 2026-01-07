@@ -7,7 +7,6 @@
     import {toast} from "svelte-sonner";
     import {uploadFile, getFileList, performFileOperationList} from '$lib/apis/chats';
     import 'virtual:uno.css'
-    import {KTour} from '@ikun-ui/core';
     import EmbedPDF from '$lib/components/common/EmbedPDF.svelte';
 
     export let refBtn1 = '';
@@ -893,64 +892,4 @@
     {#if open}
         <EmbedPDF fileUrl="{fileUrl}" closeCallback="{close}"/>
     {/if}
-    <KTour finishBtnText="完成" nextBtnText="下一步" on:close={handleClose} on:finish={handleFinish} open={openTour}
-           placement="right"
-           prevBtnText="上一步" {steps}>
-        <!-- 使用具名slot -->
-        <div let:current let:handleNext let:handlePrev slot="footer">
-            <footer class="flex justify-end">
-                <div>
-
-                    {#if current > 0}
-                        <button class="px-2 py-1 text-[10px] border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handlePrev} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {:else}
-                        <!-- 占位元素，保持布局 -->
-                        <button style="visibility: hidden"
-                                class="px-2 py-2 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handlePrev} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {/if}
-                    <button class="px-2 py-1 text-[10px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            on:click={()=>handleImportNext(handleNext,current)}>
-                        <!--{current === 4 ? '完成' : '下一步'}-->
-                        下一步
-                    </button>
-                </div>
-            </footer>
-        </div>
-    </KTour>
-
-    <KTour finishBtnText="完成" nextBtnText="下一步" on:close={handleClose} on:finish={handleFinish}
-           open={openBatchTour}
-           placement="right" prevBtnText="上一步" steps={stepsBatch}>
-        <!-- 使用具名slot -->
-        <div let:current let:handleNext let:handlePrev slot="footer">
-            <footer class="flex justify-end">
-                <div>
-
-                    {#if current > 0}
-                        <button class="px-2 py-1 text-[10px] border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={() =>handleBatchPrev(handlePrev,current)} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {:else}
-                        <!-- 占位元素，保持布局 -->
-                        <button style="visibility: hidden"
-                                class="px-2 py-2 text-xs border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                on:click={handleBatchPrev} disabled={current === 0}>
-                            上一步
-                        </button>
-                    {/if}
-                    <button class="px-2 py-1 text-[10px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            on:click={() =>handleBatchNext(handleNext,current)}>
-                        {current === 4 ? '完成' : '下一步'}
-                    </button>
-                </div>
-            </footer>
-        </div>
-    </KTour>
 </div>
