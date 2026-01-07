@@ -91,7 +91,7 @@
         if (agent_id == "") {
             if (runNode == undefined) {
                 selectedRunNodes = onCheckRunNode();
-                if (selectedRunNodes.length > 1) {
+                if (selectedRunNodes?.length > 1) {
                     showSelectNode = true;
                     return
                 }

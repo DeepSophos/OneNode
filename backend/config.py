@@ -62,6 +62,7 @@ for source in log_sources:
         SRC_LOG_LEVELS[source] = GLOBAL_LOG_LEVEL
     log.info(f"{log_env_var}: {SRC_LOG_LEVELS[source]}")
 
+DATA_DIR = str(Path(os.getenv("DATA_DIR", "./data")).resolve())
 IS_KB_PATH = os.environ.get("IS_KB_PATH", "/is_kb")
 FAILURE_IMAGE = os.environ.get("FAILURE_IMAGE", "failure_image.png")
 staged_folder = str(Path(IS_KB_PATH) / "staged")
@@ -70,7 +71,7 @@ staged_folder = str(Path(IS_KB_PATH) / "staged")
 LIMIT_CAPACITY_MB_CO = 2 * 1024
 LIMIT_CAPACITY_MB_ST = 200 * 1024
 
-SYSTEM_NAME = '求索时刻AI'
+SYSTEM_NAME = '智点工坊'
 SYSTEM_WELCOME_TITLE = '我是你的AI助手，很高兴见到你！'
 SYSTEM_WELCOME = '欢迎体验全球领先、最易用、高性价比的多模态AI原生知识库系统！'
 
@@ -79,7 +80,9 @@ LLM_SRV2_URL = os.environ.get("LLM_SRV2_URL", "")
 HF_URL = os.environ.get("HF_URL", "")
 INTERVL_URL = os.environ.get("INTERVL_URL", "")
 OMPT_URL = os.environ.get("OMPT_URL", "")
-
+CHAT_API_KEY = os.environ.get("CHAT_API_KEY", "")
+CHAT_URL = os.environ.get("CHAT_URL", "")
+CHAT_MODEL_NAME = os.environ.get("CHAT_MODEL_NAME", "")
 ####################################
 # LOGIN Behavior
 ####################################

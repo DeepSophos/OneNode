@@ -353,8 +353,7 @@ async def query_memgraph(app_session, query, query_user):
         "agent_id": app_session.agent_id,
         "io_data_id": app_session.io_data_id,
         "app_ctx_id": app_session.appctx_id,
-        "type": "case",
-        "name": "Query_Result_" + app_session.appctx_id
+        "name": "QueryResult"
     }
     query_node_list = app_session.graph.get_node("Data", query_node_data)
     if len(query_node_list) > 0:
@@ -373,7 +372,7 @@ async def query_memgraph(app_session, query, query_user):
         query_node_data |= {"query": query_user, "content": query_node_id_list}
         app_session.graph.add_node("Data", query_node_data)
 
-    return {"status": "successfully", "data": f"第二步检索案件数量：{case_num}", "type": "markdown"}
+    return {"status": "successfully", "data": f"第一步检索案件数量：{case_num}", "type": "markdown"}
 
 def bm25_tokenize(text: str):
     if not text:
@@ -406,12 +405,26 @@ async def query_embedding(app_session, query, query_user,
     query_vec = np.array(query_vec_list).astype("float32")
     query_vec = query_vec.reshape(1, -1)
 
+    query_node_data = {
+        "app_id": app_session.app_id,
+        "agent_id": app_session.agent_id,
+        "io_data_id": app_session.io_data_id,
+        "app_ctx_id": app_session.appctx_id,
+        "name": "QueryResult"
+    }
+    query_node_list = app_session.graph.get_node("Data", query_node_data)
+    query_node = {}
+    query_node_content = []
+    if len(query_node_list) > 0:
+        query_node = query_node_list[0]
+        query_node_content = query_node["content"]
+
     with open(app_session.app_dir / "embedding", 'r', encoding='utf-8') as f:
         embeddings_data = json.load(f)
 
-    node_ids = [item['node_id'] for item in embeddings_data]
-    node_contents = [item['node_content'] for item in embeddings_data]
-    vectors = [item['node_content_vecs'][0] for item in embeddings_data]
+    node_ids = [item['node_id'] for item in embeddings_data if item['node_id'] in query_node_content]
+    node_contents = [item['node_content'] for item in embeddings_data if item['node_id'] in query_node_content]
+    vectors = [item['node_content_vecs'][0] for item in embeddings_data if item['node_id'] in query_node_content]
     vectors = np.vstack(vectors).astype("float32")
     dimension = vectors.shape[1]
 
@@ -468,18 +481,8 @@ async def query_embedding(app_session, query, query_user,
             query_node_ids.append(node_ids[idx])
 
     case_num = len(query_node_ids)
-    query_node_data = {
-        "app_id": app_session.app_id,
-        "agent_id": app_session.agent_id,
-        "io_data_id": app_session.io_data_id,
-        "app_ctx_id": app_session.appctx_id,
-        "type": "case",
-        "name": "Query_Result_" + app_session.appctx_id
-    }
-    query_node_list = app_session.graph.get_node("Data", query_node_data)
+
     if len(query_node_list) > 0:
-        query_node = query_node_list[0]
-        query_node_content = query_node["content"]
         query_node_content = list(set(query_node_content) & set(query_node_ids))
         case_num = len(query_node_content)
         query_node |= {"content": query_node_content}
@@ -492,28 +495,31 @@ async def query_embedding(app_session, query, query_user,
         query_node_data |= {"query": query_user, "content": query_node_ids}
         app_session.graph.add_node("Data", query_node_data)
 
-    return {"status": "successfully", "data": f"第一步检索案件数量：{case_num}", "type": "markdown"}
+    return {"status": "successfully", "data": f"第二步检索案件数量：{case_num}", "type": "markdown"}
 
 async def query_vllm(app_session):
     from utils.iv3_client import async_chat
 
     query_node_data = {
-        "app_id": app_session.app_id,
-        "type": "case",
+        "app_id": app_session.app_id
     }
     query_node_list = app_session.graph.get_node("Data",
          query_node_data | {
              "agent_id": app_session.agent_id,
              "io_data_id": app_session.io_data_id,
              "app_ctx_id": app_session.appctx_id,
-             "name": "Query_Result_" + app_session.appctx_id
+             "name": "QueryResult"
          })
     if len(query_node_list) == 0:
         return {"status": "error", "data": f"检索异常", "type": "markdown"}
     query_node = query_node_list[0]
     query_str = query_node["query"]
     node_id_list = query_node["content"]
-    node_list = app_session.graph.get_node("Data", query_node_data, f"n.node_id IN ['{'''','''.join(node_id_list)}']")
+    node_ids = "','".join(node_id_list)
+    node_list = app_session.graph.get_node("Data",
+           query_node_data | {"type": "case"},
+           f"n.node_id IN ['{node_ids}']"
+           )
     case_data_list = []
     for node in node_list:
         content = node.get("content")
@@ -532,12 +538,9 @@ async def query_vllm(app_session):
 事故案例数据如下：
 {case_data_str}
 """
-    app_session.write_log(f"query_vllm,prompt = {prompt}")
-    # from llm.vllm import deepseek32
-    # answer = await deepseek32.query(prompt)
-    # answer = await async_chat(prompt)
-    from utils.iv3_client import qwen_chat
-    answer = await qwen_chat(prompt)
+
+    answer = await async_chat(prompt)
+
     return {"status": "successfully", "data": f"{answer}", "type": "markdown"}
 
 
@@ -583,8 +586,8 @@ if __name__ == "__main__":
     ids = {
         "app_id": '680icft5uw3o',
         "agent_id": 'qy5ebmpg3cuq',
-        "app_ctx_id": 'e2uw1vmy5gwt',
-        "io_data_id": '3o1xgmyy9w60'
+        "app_ctx_id": '7d2u79g1l3a3',
+        "io_data_id": '9wwrvrtkrt9y'
     }
 
     roots = [

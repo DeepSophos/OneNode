@@ -23,7 +23,6 @@
 	import { getBackendConfig } from '$lib/apis';
 	import { getSessionUser } from '$lib/apis/auths';
     import { getSystemInfo, getVersion } from '$lib/apis/rag';
-    import { GetUserDefaultPath } from '$lib/apis/unit';
 	import { getSignUpEnabledStatus } from '$lib/apis/auths';
 
 	import '../app.css';
@@ -42,6 +41,7 @@
 		theme.set(localStorage.theme);
 		// Check Backend Status
 		const backendConfig = await getBackendConfig();
+		signUpEnabledStatus.set(await getSignUpEnabledStatus());
 		if (backendConfig) {
 			// Save Backend Status to Store
 			await config.set(backendConfig);
@@ -68,6 +68,25 @@
                 }
 
 				if (localStorage.token) {
+				    await getSystemInfo(localStorage.token).then((data) => {
+						if(!data.token_valid)
+							goto('/auth');
+						system_name.set(data.system_name);
+						system_welcome.set(data.system_welcome);
+						system_welcome_title.set(data.system_welcome_title);
+						show_welcome.set(data.show_system_welcome==="true")
+						show_welcome_title.set(data.show_system_title==="true")
+						system_logo.set(data.system_logo)
+						login_bg.set(data.login_bg)
+						system_allCompanyName.set(data.allCompanyName)
+						system_allCompanyUrl.set(data.allCompanyUrl)
+						system_failedAnswer.set(data.failedAnswer==="true")
+						sdk_access_token_enabled.set(data.token_enabled==="true")
+						sdk_access_token_duration.set(data.token_duration)
+						gpu_number.set(parseInt(data.gpu_number || 0))
+						sdk_dev_doc.set(data.sdk_dev_doc==="true")
+						kbman_super_enabled.set(data.kbman_super_enabled==="true")
+				    })
 
 
 					// Get Session User Info
