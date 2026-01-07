@@ -357,20 +357,20 @@
             <div class="relative z-10 mt-[10vh] px-8 md:px-32 lg:px-52 text-gray-900 text-xl">{systemName}
 <!--                智点工坊-->
             </div>
-            <div class="relative z-10 h-full mt-[20vh] px-8 md:px-32 lg:px-52 hidden">
+            <div class="relative z-10 h-full mt-[20vh] px-8 md:px-32 lg:px-52">
                 <div class="text-blue-700">
-                    <div class="text-2xl">欢迎体验全球领先、易用、高性价比的</div>
-                    <div class="text-4xl font-bold">多模态AI原生知识库系统！</div>
+                    <div class="text-2xl">极简的AI应用构建工具</div>
+                    <div class="text-4xl font-bold">用AI智能体来自动化您的日常工作</div>
                 </div>
                 <ul class="text-gray-900 space-y-3 mt-16 text-xl">
                     <li class="flex items-start">
-                        <span>开箱即用、精准智能问答、智能检索、无大模型幻觉</span>
+                        <span>文档编辑、生成自动化</span>
                     </li>
                     <li class="flex items-start">
-                        <span>输出内容可精准追溯原文、多模态图片表格理解及混排输出</span>
+                        <span>知识与数据查询智能化</span>
                     </li>
                     <li class="flex items-start">
-                        <span>文档资料自动处理、可局域网内私有化部署、服务器硬件配置要求低</span>
+                        <span>无须编程，真正懂你的AI高级助手</span>
                     </li>
                 </ul>
             </div>
@@ -378,7 +378,7 @@
             <div class="absolute bottom-2 text-gray-400 text-xs px-8 md:px-32 lg:px-52">
                 Copyright © 2024-2025 {company_name}. All Rights Reserved
             </div>
-        {/if}
+    {/if}
     </div>
     <!-- 右侧登录区域 -->
     <div class="w-full md:w-5/12 flex items-center justify-center p-8 bg-white">

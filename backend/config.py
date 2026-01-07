@@ -62,7 +62,6 @@ for source in log_sources:
         SRC_LOG_LEVELS[source] = GLOBAL_LOG_LEVEL
     log.info(f"{log_env_var}: {SRC_LOG_LEVELS[source]}")
 
-DATA_DIR = str(Path(os.getenv("DATA_DIR", "./data")).resolve())
 IS_KB_PATH = os.environ.get("IS_KB_PATH", "/is_kb")
 FAILURE_IMAGE = os.environ.get("FAILURE_IMAGE", "failure_image.png")
 staged_folder = str(Path(IS_KB_PATH) / "staged")
