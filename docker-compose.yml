@@ -1,0 +1,50 @@
+version: '3.6'
+
+services:
+  OneNode:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.onenode
+      args:
+        - HTTP_PROXY=${http_proxy}
+        - HTTPS_PROXY=${https_proxy}
+        - no_proxy=${no_proxy}
+    image: onenode
+    container_name: onenode
+    init: true
+    environment:
+      LANG: "zh_CN.UTF-8"
+      LC_ALL: "zh_CN.UTF-8"
+      TMPDIR: "/tmp"
+      PORT: "8080"
+      HF_URL: "${HF_URL}"
+      HOST_URL: "${HOST_URL}"
+      OMPT_URL: "${OMPT_URL}"
+      INTERVL_URL: "${INTERVL_URL}"
+      LLM_SRV1_URL: "${LLM_SRV1_URL}"
+      LLM_SRV2_URL: "${LLM_SRV2_URL}"
+      MEM_GRAPH_URL: "${MEM_GRAPH_URL}"
+      PYTHONPATH: "/onenode"
+    volumes:
+      - ./is_kb:/is_kb
+      - ./backend:/onenode
+      - ./build:/build
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: [ '0' ]
+              capabilities: [ gpu ]
+    networks:
+      - onenode_network
+
+
+networks:
+  onenode_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1442

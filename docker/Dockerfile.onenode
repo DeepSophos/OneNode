@@ -1,5 +1,12 @@
 FROM ubuntu:24.04
 
+RUN tee /etc/apt/sources.list <<-'EOF'
+deb https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
+EOF
+
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository ppa:libreoffice/ppa && \
@@ -16,8 +23,6 @@ ADD build /build
 
 WORKDIR /OneNode
 
-COPY backend/requirements.txt .
-
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
     && bash miniconda.sh -b -u -p /miniconda3 \
     && /miniconda3/bin/conda init bash
@@ -28,6 +33,8 @@ RUN /bin/bash -c "source /miniconda3/bin/activate \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r \
     && conda install -y python=3.11.9"
+
+COPY backend/requirements.txt .
 
 RUN /bin/bash -c "source /miniconda3/bin/activate \
     && conda clean --all --yes \

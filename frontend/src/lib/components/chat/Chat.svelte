@@ -22,7 +22,7 @@
     } from '$lib/stores';
     import {copyToClipboard, splitStream} from '$lib/utils';
 
-    import {generateChatCompletion, cancelOllamaRequest} from '$lib/apis/ollama';
+    //import {generateChatCompletion, cancelOllamaRequest} from '$lib/apis/ollama';
     import {
         addTagById,
         createNewChat,
@@ -113,7 +113,7 @@
             await initNewChat();
         } else {
             if (currentRequestId !== null) {
-                await cancelOllamaRequest(localStorage.token, currentRequestId);
+                //await cancelOllamaRequest(localStorage.token, currentRequestId);
                 currentRequestId = null;
             }
             goto('/');
@@ -123,7 +123,7 @@
 
     const initNewChat = async () => {
         if (currentRequestId !== null) {
-            await cancelOllamaRequest(localStorage.token, currentRequestId);
+            //await cancelOllamaRequest(localStorage.token, currentRequestId);
             currentRequestId = null;
         }
         window.history.replaceState(history.state, '', `/`);
