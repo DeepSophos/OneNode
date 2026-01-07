@@ -8,6 +8,7 @@ export const APP_NAME = '智点工坊'
 export const BACKEND_API_BASE_URL = `${ONENODE_BASE_URL}/backend/api/v1`;
 export const AGENT_API_BASE_URL = `${ONENODE_BASE_URL}/agents/api/v1`;
 export const STATISTICS_API_BASE_URL = `${ONENODE_BASE_URL}/statistics/api/v1`;
+export const AUDIO_API_BASE_URL = `${ONENODE_BASE_URL}/audio`;
 
 export const ONENODE_VERSION = APP_VERSION;
 export const REQUIRED_OLLAMA_VERSION = '0.1.16';

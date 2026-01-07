@@ -39,6 +39,10 @@ logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
+Path(IS_KB_PATH).mkdir(parents=True, exist_ok=True)
+Path(staged_folder).mkdir(parents=True, exist_ok=True)
+
+
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         try:
