@@ -17,7 +17,6 @@ RUN apt-get update && \
 
 RUN echo "zh_CN.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen zh_CN.UTF-8
 
-ADD build /build
 
 # ADD fonts /usr/share/fonts
 
@@ -44,5 +43,6 @@ RUN /bin/bash -c "source /miniconda3/bin/activate \
     && pip install -r requirements.txt"
 
 ADD backend .
+ADD build /build
 
 CMD ["/usr/bin/bash", "start.sh"]

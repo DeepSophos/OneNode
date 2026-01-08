@@ -24,10 +24,10 @@ services:
       LLM_SRV1_URL: "${LLM_SRV1_URL}"
       LLM_SRV2_URL: "${LLM_SRV2_URL}"
       MEM_GRAPH_URL: "${MEM_GRAPH_URL}"
-      PYTHONPATH: "/onenode"
+      PYTHONPATH: "/OneNode"
     volumes:
       - ./is_kb:/is_kb
-      - ./backend:/onenode
+      - ./backend:/OneNode
       - ./build:/build
     ports:
       - "8080:8080"
