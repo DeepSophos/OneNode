@@ -1,0 +1,305 @@
+app:
+  category: tools
+  createdAt: 1767509549941
+  id: ''
+  label:
+  - Application
+  name: 日报生成
+  node_id: rl4dk4koslw7
+  owner_id: bfc7f3a5-239d-4aba-96b1-97a0822aa783
+  owner_name: xelers
+  updatedAt: 1767509549941
+workflow:
+  edges:
+  - - 3zx9eso8dwhl
+    - u2bam0ruoblh
+  - - u2bam0ruoblh
+    - hviqqem1780b
+  - - hviqqem1780b
+    - y5cxbd82zw6q
+  - - u2bam0ruoblh
+    - vw90ye7gqh2d
+  - - vw90ye7gqh2d
+    - y5cxbd82zw6q
+  nodes:
+  - app_id: rl4dk4koslw7
+    id: c3e343ql5044
+    inputs: []
+    label:
+    - Agent
+    name: 上传文件
+    node_id: 3zx9eso8dwhl
+    position:
+      x: -270
+      y: -195
+    task: 上传docx文件到upload文件夹下
+    tools:
+    - annotations: null
+      app_id: rl4dk4koslw7
+      description: '**上传文件**这个工具用于请求用户上传指定格式的文件到指定的目录。其中，标题为对话框的标题，upload_dir用于指定保存上传文件的目录。'
+      icons: null
+      inputSchema:
+        properties:
+          file_format:
+            type: string
+          title:
+            type: string
+          upload_dir:
+            type: string
+        required:
+        - title
+        - file_format
+        - upload_dir
+        type: object
+      label:
+      - Tool
+      meta:
+        _fastmcp:
+          tags: []
+      name: upload_files
+      node_id: 7eye7ave5cql
+      title: null
+    type: customNode
+  - app_id: rl4dk4koslw7
+    id: boj313gs4595
+    inputs:
+    - 3zx9eso8dwhl
+    label:
+    - Agent
+    name: 读取文件
+    node_id: u2bam0ruoblh
+    position:
+      x: -15
+      y: -195
+    task: 读取upload目录下的.docx文件
+    tools:
+    - annotations: null
+      app_id: rl4dk4koslw7
+      description: '**读取文档**这个工具用于读取指定目录下的指定格式的文件到图数据库中。
+
+        示例：读取upload目录下的.docx文件'
+      icons: null
+      inputSchema:
+        properties:
+          file_format:
+            type: string
+          subdirectory:
+            type: string
+        required:
+        - subdirectory
+        - file_format
+        type: object
+      label:
+      - Tool
+      meta:
+        _fastmcp:
+          tags: []
+      name: read_docx_from_dir
+      node_id: x899katuzdgt
+      title: null
+    type: customNode
+  - app_id: rl4dk4koslw7
+    id: cyen1ky0gbum
+    inputs:
+    - hviqqem1780b
+    - vw90ye7gqh2d
+    label:
+    - Agent
+    name: 生成文件
+    node_id: y5cxbd82zw6q
+    position:
+      x: 525
+      y: -195
+    task: 使用模板文件"工程信息月报.docx"生成文件，要求文件名为:“2025年8月工程信息月报（工程管理部）.docx”
+    tools:
+    - annotations: null
+      app_id: rl4dk4koslw7
+      description: '**生成文档**这个工具将自动从知识图谱数据中获取数据写出到文档。参数说明：
+
+        template_file_name: 使用的模板文件名
+
+        filename: 指定生成的文件名
+
+        用户指定文档生成操作的任务示例： 使用模板文件"工程信息月报.docx"生成文件，要求文件名为:“2025年8月工程信息月报（工程管理部）.docx”。
+
+        对应的参数是:
+
+        template_file_name: 工程信息月报.docx
+
+        filename: 2025年8月工程信息月报（工程管理部）.docx'
+      icons: null
+      inputSchema:
+        properties:
+          filename:
+            type: string
+          template_file_name:
+            title: Template File Name
+        required:
+        - template_file_name
+        - filename
+        type: object
+      label:
+      - Tool
+      meta:
+        _fastmcp:
+          tags: []
+      name: write_docx
+      node_id: pu6wv1r2pbmb
+      title: null
+    type: customNode
+  - app_id: rl4dk4koslw7
+    id: it1lfm8qvqsd
+    inputs:
+    - u2bam0ruoblh
+    label:
+    - Agent
+    name: 复制章节
+    node_id: hviqqem1780b
+    position:
+      x: 255
+      y: -255
+    task: "将\"红河\"文件中\"重大项目\"中的内容复制到\"重大项目_煤电项目\".\n\n将\"耀荣\"文件中\"重大项目\"中的内容复制到\"\
+      重大项目_耀荣\".\n                       \n将\"滇能\"文件中\"重大项目\"中的内容复制到\"重大项目_滇能\".\n\
+      \                       \n将\"建筑\"文件中\"重大项目\"中的内容复制到\"重大项目_建筑\".\n          \
+      \             \n将\"电网\"文件中\"重大项目\"中的内容复制到\"重大项目_电网\".\n                    \
+      \   \n将\"机电\"文件中\"重大项目\"中的内容复制到\"重大项目_机电\".\n\n将\"国际项目\"文件中\"重大项目\"中的内容复制到\"\
+      重大项目_国际项目\".\n\n将\"耀荣\"文件中\"较大项目::工程简介\"中的内容复制到\"较大项目_耀荣\".\n\n将\"电网\"文件中\"\
+      较大项目::工程简介\"中的内容复制到\"较大项目_电网\".\n\n将\"机电\"文件中\"较大项目::工程简介\"中的内容复制到\"较大项目_机电\"\
+      .\n\n将\"建筑\"文件中\"较大项目::工程简介\"中的内容复制到\"较大项目_建筑\".\n\n将\"运检\"文件中\"维护检修及改造项目::维护项目::项目简介及运维情况\"\
+      中的内容复制到\"维护项目_运维情况_1000万元以上\".\n\n"
+    tools:
+    - annotations: null
+      app_id: rl4dk4koslw7
+      description: '**复制文档中的章节**这个工具用于复制指定文档中的章节内容到指定的内容节点。参数说明：
+
+        filename: 指定从哪个文件进行复制，文件名指定可以只是文件名的一部分，用*表示省略的部分。
+
+        title: 指定复制哪个章节以下的内容. 章节标题指定可以只是完整章节标题的一部分，用*表示省略的部分
+
+        target_node_name: 指定一个图的节点名字，内容将被复制到这个节点之下。
+
+
+        工具任务示例：　将"红河"文件中重大项目中的内容复制到"重大项目_煤电项目".'
+      icons: null
+      inputSchema:
+        properties:
+          filename:
+            title: Filename
+          target_node_name:
+            title: Target Node Name
+          title:
+            title: Title
+        required:
+        - filename
+        - title
+        - target_node_name
+        type: object
+      label:
+      - Tool
+      meta:
+        _fastmcp:
+          tags: []
+      name: graph_copy_to
+      node_id: bhui5i6do9yk
+      title: null
+    type: customNode
+  - app_id: rl4dk4koslw7
+    id: psx1zv2l6cxo
+    inputs:
+    - u2bam0ruoblh
+    label:
+    - Agent
+    name: 合并表格
+    node_id: vw90ye7gqh2d
+    position:
+      x: 260.541161524106
+      y: -136.9433053451952
+    task: '
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"较大项目::人力资源情况"中的第1个表格按单位名称分组合并到"较大项目_人力资源情况"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"较大项目::进度概况"中的第1个表格按单位名称分组合并到"较大项目_进度概况"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"其它项目::人力资源情况"中的第1个表格按单位名称分组合并到"其它项目_人力资源情况"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"其它项目::进度概况"中的第1个表格按单位名称分组合并到"其它项目_进度概况"
+
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::维护项目::人力资源统计（合同额1000万元以上）"中的第1个表格按单位名称分组合并到"维护项目_人力资源统计_1000万元以上"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::维护项目::人力资源统计（合同额1000万元以下）"中的第1个表格按单位名称分组合并到"维护项目_人力资源统计_1000万元以下"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::大修项目::项目统计（合同额200万元以上）"中的第1个表格按单位名称分组合并到"大修项目_项目统计_200万元以上"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::大修项目::项目统计（合同额200万元以下）"中的第1个表格按单位名称分组合并到"大修项目_项目统计_200万元以下"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::改造项目::项目统计（合同额200万元以上）"中的第1个表格按单位名称分组合并到"改造项目_项目统计_200万元以上"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"维护检修及改造项目::改造项目::项目统计（合同额200万元以下）"中的第1个表格按单位名称分组合并到"改造项目_项目统计_200万元以下"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"本月工程投产情况和下月投产计划::本月工程投产情况"中的第1个表格按项目类型分组合并到"本月工程投产情况"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"本月工程投产情况和下月投产计划::下月工程投产计划"中的第1个表格按项目类型分组合并到"下月工程投产计划"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"危大工程专项施工方案信息"中的第1个表格不分组合并到"A类专项施工方案信息"
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"危大工程专项施工方案信息"中的第2个表格不分组合并到"B类专项施工方案信息"
+
+
+      分别将"滇能"、"电网"、"调试"、"红河"、"机电"、"建筑"、"耀荣"、"运检"文件中的"项目竣工资料信息"中的第1个表格按单位名称分组合并到"竣工项目"
+
+
+
+      '
+    tools:
+    - annotations: null
+      app_id: rl4dk4koslw7
+      description: '**合并文档中的表格**这个工具用于合并指定文档中的表格到指定的内容节点。参数说明：
+
+        filename: 指定从哪个文件进行合并，文件名指定可以只是文件名的一部分，用*表示省略的部分。
+
+        title: 指定合并哪个章节下的表格内容. 章节标题指定可以只是完整章节标题的一部分，用*表示省略的部分，用::表示多级标题。
+
+        table_index: 要合并的表格索引，从1开始计数。 -1表示合并章节下的所有表格。
+
+        group: 指定分组合并内容. 取值 NONE（不分组）、ORG（单位名称）、ITEM-TYPE（项目类型），
+
+        target_node_name: 指定一个图的节点名字，内容将被合并到这个节点之下。
+
+
+        工具任务示例：　将"红河"文件中"较大项目::人力资源情况"中第1个表格内容按"单位名称"分组合并到"较大项目_人力资源情况".'
+      icons: null
+      inputSchema:
+        properties:
+          filename:
+            title: Filename
+          group:
+            title: Group
+          table_index:
+            title: Table Index
+          target_node_name:
+            title: Target Node Name
+          title:
+            title: Title
+        required:
+        - filename
+        - title
+        - table_index
+        - group
+        - target_node_name
+        type: object
+      label:
+      - Tool
+      meta:
+        _fastmcp:
+          tags: []
+      name: merge_table
+      node_id: xahrytkj4a9c
+      title: null
+    type: customNode
