@@ -223,38 +223,6 @@ async def extract_rule_field(app_session):
         root_node = app_session.graph.add_node("Data", root_node_data)
 
     prompt_template = """
-从{node_name}中提取以下字段：
-保单号
-被保险人信息
-货物名称
-货物包装数量
-包装情况
-发货人
-收货人
-运输方式
-航程信息
-事故发生日期
-事故发生地点
-货损金额
-货损币种
-核损金额
-残值处理
-追偿处理
-损失状况描述
-可能导致原因
-是否淡水或海水损
-事故经过
-损失原因
-理算金额
-理算币种
-输出要求：
-1. 输出json格式，key为字段名称，value为对应的值
-2. 如果文档中没有对应字段，value值为"未告知"
-3. 金额类字段换算成RMB，只输出数字，去掉币种符号
-4. 日期类字段统一格式为YYYY-MM-DD
-5. 描述、原因等字段尽可能详细，不要精简或艺术加工
-{node_name}执行的结果是：   
-node_content
 """
     node_data = {
         "app_id": app_session.app_id,
