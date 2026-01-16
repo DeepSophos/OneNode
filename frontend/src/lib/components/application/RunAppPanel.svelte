@@ -26,10 +26,16 @@
     let isShowSelectNode = false;
     let showSelectNode = false;
     let selectedRunNodes = null;
+    let showModal = false;
+    let modalData = '';
+    let scrollTimer = null;
 
-    $: if (messages.length > 0) setTimeout(scrollToBottom, 50);
+    $: if (messages.length > 0) {
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(scrollToBottom, 50);
+    }
 
-    // 自动滚动到底部函数
+
     function scrollToBottom() {
         const hasScrollbar = messagesContainer.scrollHeight > messagesContainer.clientHeight + 1;
         if (hasScrollbar) {
@@ -70,12 +76,16 @@
 
     // 角色转名称
     function roleToName(role) {
-        switch (role) {
+        role= role.split(':')
+        let type = role[0];
+        let name = role.length>1?role[1]:'';
+        switch (type) {
             case "agent": return "智能代理";
             case "tool": return "工具";
             case "llm": return "大模型";
             case "user": return "用户";
             default: return "系统";
+
         }
     }
 
@@ -126,6 +136,8 @@
             const data = JSON.parse(line);
             switch (data.channel) {
                 case "prompt":
+                case "progress":
+                case "response":
                     if(data.command=="append")
                     {
                         if (messages.length == 0 || messages[messages.length - 1].role != data.role) {
@@ -145,29 +157,22 @@
                                 done: false
                             }];
                         } else {
-                            const lastMessage = messages[messages.length - 1];
-                            const updatedLast = {
-                                ...lastMessage,
-                                content: lastMessage.content + '\n\n' + data.data.content
+                            const lastIndex = messages.length - 1;
+                            const lastMessage = messages[lastIndex];
+                            messages[lastIndex] = {
+                              ...lastMessage,
+                              content: lastMessage.content + (data.channel === "prompt" ? "\n\n" : "") + data.data.content
                             };
-                            messages = [...messages.slice(0, -1), updatedLast];
                         }
                     }
                     break;
-                case "progress":
-                    // 处理进度信息
-                    break;
-                case "response":
-                    // 处理响应信息
+                case "ui_control":
+                    modalData = {app_id: data.app_id, agent_id: data.agent_id, ...data.data};
+                    showModal = true;
                     break;
                 default:
                     //control commands
-                    if (data.command === 'show_ui_control') {
-                        data.data = {...data.data, app_id: data.app_id, agent_id: data.agent_id};
-                        openModal(data.data);
-                    }
-                    else if (data.command === 'end') {
-                        // 处理结束命令
+                   if (data.command === 'end') {
                         isRunning = false;
                         console.log('Application run ended.');
                         if (messages.length > 0) {
@@ -184,8 +189,7 @@
         }
     }
 
-    function  parse_tool_json(content)
-    {
+    function  parse_tool_json(content){
         try {
             const tools = JSON.parse(content.replace(/```json\n/, '').replace(/\n```$/, ''))
             return  tools;
@@ -195,12 +199,8 @@
         }
     }
 
-    let showModal = false;
-    let modalData = '';
-    function openModal(data) {
-        modalData = data;
-        showModal = true;
-    }
+
+
 </script>
 
 <div class="w-full min-w-[24vw] overflow-hidden dark:bg-gray-900 {agent_id==''?'border-l':''} h-full border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300">
@@ -245,17 +245,17 @@
         {#each messages as msg}
             <div
                 class={`flex items-start space-x-3
-                ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}
+                ${msg.role.startsWith('user') ? 'flex-row-reverse' : 'flex-row'}
             `}
             >
                 <!-- 头像 -->
                 <div
                     class={`w-10 h-10 flex items-center justify-center rounded-full font-semibold text-sm shadow-md transition-all duration-300 hover:shadow-lg
-                    ${msg.role === 'user'
+                    ${msg.role.startsWith('user')
                         ? 'bg-blue-500 text-white hover:bg-blue-600'
-                        : msg.role === 'agent'
+                        : msg.role.startsWith('agent')
                             ? 'bg-purple-500 text-white hover:bg-purple-600'
-                            : msg.role === 'tool'
+                            : msg.role.startsWith('tool')
                                 ? 'bg-green-500 text-white hover:bg-green-600'
                                 : 'bg-indigo-500 text-white hover:bg-indigo-600'
                     }
@@ -263,7 +263,7 @@
                     aria-label={roleToName(msg.role)}
                     title={roleToName(msg.role)}
                 >
-                    {msg.role === "agent" ? "AG" : msg.role === "tool" ? "TL" : msg.role === "llm" ? "LM" : "U"}
+                    {msg.role.startsWith("agent") ? "AG" : msg.role.startsWith("tool") ? "TL" : msg.role.startsWith("llm") ? "LM" : "U"}
                 </div>
 
                 <!-- 消息内容 -->

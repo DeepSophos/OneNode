@@ -208,110 +208,6 @@ async def read_docx_tmpl(app_session, tmpl_filename):
     doc_reader.read_tmpl(tmpl_filenames[0])
     return {"status": "successfully", "type": "graph", "data": f"{APP_CONSTS}"}
 
-async def extract_rule_field(app_session):
-    from utils.iv3_client import async_chat
-    from utils import hf_client
-    root_node_data={
-        "app_id": app_session.app_id,
-        "name": "CASEROOT"
-    }
-
-    root_node_list = app_session.graph.get_node("Data", root_node_data)
-    if len(root_node_list) > 0:
-        root_node = root_node_list[0]
-    else:
-        root_node = app_session.graph.add_node("Data", root_node_data)
-
-    prompt_template = """
-"""
-    node_data = {
-        "app_id": app_session.app_id,
-        "type": "case"
-    }
-    rels = app_session.graph.get_relationship(
-        {
-            "src_label": "Data",
-            "src_props": {"app_ctx_id": app_session.appctx_id, "name": WHITE_BOARD},
-            "rel_types": ["SUBHEADING"],
-            "hop_num": 1
-        }
-    )
-
-    if len(rels) == 0:
-        return {"status": "error", "type": "markdown", "data": "file is not found!"}
-
-    embedding_list = []
-    for _, _, node in rels:
-        title = node.get("title")
-        content = node.get("content")
-        if isinstance(content, list):
-            content = "".join(item.get("content", "") for item in content)
-        if not content:
-            continue
-        prompt = prompt_template
-        prompt = prompt.replace("node_name", title)
-        prompt = prompt.replace("node_content", content)
-
-        answer_mk = await async_chat(prompt)
-        answer_str = re.sub(r'^```(?:json)?\s*|\s*```$', '', answer_mk.strip(), flags=re.MULTILINE)
-        answer_json = json.loads(answer_str)
-
-        new_node_data = {
-            "name": title,
-            "content": [{"type": "markdown", "content": answer_mk}],
-            **node_data,
-            **answer_json
-        }
-        new_node = app_session.graph.add_node("Data", new_node_data)
-        app_session.graph.add_relationship(
-            "Data",
-            root_node['node_id'],
-            "SUBHEADING",
-            "Data",
-            new_node['node_id']
-        )
-        fields = [
-            "追偿处理",
-            "损失状况描述",
-            "可能导致原因",
-            "是否淡水或海水损",
-            "事故经过",
-            "损失原因"
-        ]
-        embedding_content = []
-        for field in fields:
-            value = answer_json.get(field, "")
-            embedding_content.append(f"{field}: {value}")
-        embedding_content = "\n".join(embedding_content)
-
-        if not embedding_content.strip():
-            continue
-
-        data_vecs = hf_client.embedding(embedding_content)
-        embedding_list.append({
-            "node_id": new_node['node_id'],
-            "node_content": embedding_content,
-            "node_content_vecs": data_vecs
-        })
-
-    embedding_path = app_session.app_dir / "embedding"
-    embedding_data = []
-    if embedding_path.exists():
-        try:
-            with open(embedding_path, 'r', encoding='utf-8') as f:
-                embedding_data = json.load(f)
-                embedding_data.extend(embedding_list)
-        except Exception as e:
-            embedding_data = embedding_list
-    else:
-        embedding_data = embedding_list
-
-    with open(app_session.app_dir / "embedding", "w") as f:
-        f.write(json.dumps(embedding_data, ensure_ascii=False, indent=2))
-
-    return {"status": "successfully", "data": f"{root_node['name']}", "type": "tree"}
-
-
 async def query_memgraph(app_session, query, query_user):
     query_node_list = app_session.graph.execute(query, None)
     query_node_id_list = [node["node_id"] for node in query_node_list]
@@ -340,7 +236,7 @@ async def query_memgraph(app_session, query, query_user):
         query_node_data |= {"query": query_user, "content": query_node_id_list}
         app_session.graph.add_node("Data", query_node_data)
 
-    return {"status": "successfully", "data": f"第一步检索案件数量：{case_num}", "type": "markdown"}
+    return {"status": "successfully", "data": f"第一步检索数量：{case_num}", "type": "markdown"}
 
 def bm25_tokenize(text: str):
     if not text:
@@ -463,54 +359,7 @@ async def query_embedding(app_session, query, query_user,
         query_node_data |= {"query": query_user, "content": query_node_ids}
         app_session.graph.add_node("Data", query_node_data)
 
-    return {"status": "successfully", "data": f"第二步检索案件数量：{case_num}", "type": "markdown"}
-
-async def query_vllm(app_session):
-    from utils.iv3_client import async_chat
-
-    query_node_data = {
-        "app_id": app_session.app_id
-    }
-    query_node_list = app_session.graph.get_node("Data",
-         query_node_data | {
-             "agent_id": app_session.agent_id,
-             "io_data_id": app_session.io_data_id,
-             "app_ctx_id": app_session.appctx_id,
-             "name": "QueryResult"
-         })
-    if len(query_node_list) == 0:
-        return {"status": "error", "data": f"检索异常", "type": "markdown"}
-    query_node = query_node_list[0]
-    query_str = query_node["query"]
-    node_id_list = query_node["content"]
-    node_ids = "','".join(node_id_list)
-    node_list = app_session.graph.get_node("Data",
-           query_node_data | {"type": "case"},
-           f"n.node_id IN ['{node_ids}']"
-           )
-    case_data_list = []
-    for node in node_list:
-        content = node.get("content")
-        if isinstance(content, list):
-            for item in content:
-                app_session.write_log(item.get("content", ""))
-            content = "".join(item.get("content", "") for item in content)
-        case_data_list.append(content)
-
-    if len(case_data_list) == 0:
-        return {"status": "error", "data": f"未检索到案件数据", "type": "markdown"}
-
-    case_data_str = "\n".join(case_data_list)
-    prompt = f"""根据以下事故案例数据，结合你的专业知识，针对用户的问题进行详细解答。
-用户的问题是：{query_str}
-事故案例数据如下：
-{case_data_str}
-"""
-
-    answer = await async_chat(prompt)
-
-    return {"status": "successfully", "data": f"{answer}", "type": "markdown"}
-
+    return {"status": "successfully", "data": f"第二步检索数量：{case_num}", "type": "markdown"}
 
 def tool_dev():
     id_pairs = [

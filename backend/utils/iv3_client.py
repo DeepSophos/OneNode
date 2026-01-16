@@ -197,7 +197,7 @@ def chat(question, image=None, image_path=None):
         r = text_conversation(question)
     return r
 
-async def async_chat(prompt: str):
+async def async_chat(prompt: str, stream: bool = False, enable_thinking: bool = False) :
     """
     Send an async request to a vLLM server with an OpenAI-compliant API.
 
@@ -219,12 +219,35 @@ async def async_chat(prompt: str):
                 {"role": "user", "content": [{"type": "text", "text": prompt}]}
             ],
             temperature=0.0,
+            extra_body={"enable_thinking": enable_thinking},
+            stream=stream
         )
-        return completion.choices[0].message.content
+        if not stream:
+            content = completion.choices[0].message.content or ""
+            yield "response", content
+            yield "final", ""
+            return
+
+        is_answering=False
+        for chunk in completion:
+            delta = chunk.choices[0].delta
+            if not chunk.choices[0].finish_reason is None:
+                yield "final",""
+                return
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+                if not is_answering:
+                    yield "progress", delta.reasoning_content
+
+            if hasattr(delta, "content") and delta.content:
+                if not is_answering:
+                    is_answering = True
+                yield "response", delta.content
+
+
     except Exception as e:
         print(f"Chat error: {e}")
         traceback.print_exc()
-        return None
+        yield "error", str(e)
 
 if __name__ == '__main__':
 #     p1 = """

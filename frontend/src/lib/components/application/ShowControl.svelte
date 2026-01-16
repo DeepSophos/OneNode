@@ -21,7 +21,7 @@
 
     function close() {
         show = false;
-        modalData.callbackData= {description: "取消操作"};
+        modalData.callbackData= {type:"markdown", data: "取消操作"};
         sendFeedback("cancel");
         dispatch("close");
     }
@@ -64,7 +64,7 @@
             <header
                 class="py-3 px-5 rounded-t-xl border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-900"
             >
-                <h2 class=" font-semibold text-gray-800 dark:text-gray-100">{modalData.title}</h2>
+                <h2 class=" font-semibold text-gray-800 dark:text-gray-100">{modalData.content.title}</h2>
                 <button
                     on:click={close}
                     aria-label="关闭模态窗"

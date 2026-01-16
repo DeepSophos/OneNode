@@ -215,6 +215,14 @@ class Application:
             self.incomes[v['node_id']].add(k['node_id'])
             self.edges.append((k['node_id'], v['node_id']))
 
+    async def next_agent(self, ctx, current):
+        edges = self.graph().get_relationship({
+            "src_label": "Agent",
+            "src_props": {"node_id": current.get("node_id")},
+            "rel_types": ["NEXT"],
+            "hop_num": 1})
+        return await self.run_agents(ctx, current, [self.nodes[nxt['node_id']] for _, _, nxt in edges])
+
     async def run_agent(self, ctx, prev, current):
         ret = await current.invoke(ctx)
         if isinstance(ret, dict):
@@ -325,14 +333,14 @@ class Application:
 
     async def feedback(self, message):
         feedback = json.loads(message)
-        await self.data_pipe.write_to_frontend(self.node_id, '', feedback.get("data", {}).get("description", "操作完成"), 'user')
+        await self.data_pipe.write_to_frontend(self.node_id, '', feedback.get("data", {}).get("data", "操作完成"), 'user')
         await self.data_pipe.put_to_input_queue(
             json.dumps(feedback | {"app_id": self.node_id}))
         return {"status": "successfully"}
 
 
     async def terminate(self):
-        await self.data_pipe.write_to_frontend(self.node_id, '', '\e')
+        await self.data_pipe.write_to_frontend(self.node_id, '', '\e', 'system')
         await self.data_pipe.stop_streaming()
 
 

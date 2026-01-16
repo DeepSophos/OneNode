@@ -81,11 +81,12 @@ class SuperAgent:
                 if tool_r is not None:
                     try:
                         out_d = json.loads(tool_r.content[0].text or '{}')
+                        ret_list.append(out_d)
+
                         if out_d.get('status', '') == 'cancel':
                             app_ctx.set_run_state(self.node_id, 'cancel')
-                        else:
-                            await self.print("tool", out_d.get('data',""), out_d.get("type","markdown"))
-                            ret_list.append(out_d)
+                        elif not out_d.get('internal', False):
+                            await self.print(f"tool:{tool_name}", out_d.get('data',""), out_d.get("type","markdown"))
                     except Exception as e:
                         log.info(f"Failed to call tool: {tool_name}, with: {e}")
                     return True
@@ -101,7 +102,7 @@ class SuperAgent:
                     node_result = f"无"
 
                 result.append(f"{{{node_name}}} 执行的结果是：")
-                result.append(str(node_result))
+                result.append(str(node_result).encode('utf-8').decode('unicode-escape'))
                 result.append("")
 
             return "\n".join(result)
@@ -112,6 +113,12 @@ class SuperAgent:
                 return None
 
             output_type = self.config.get("output_type", "plain_text")
+
+            await self.print(f"agent:{self.config['name']}", self.config['task'])
+
+            if self.config["task"].strip().startswith('```python') and self.config["task"].strip().endswith('```'):
+                return await self.run_script_mode(app_ctx, self.config["task"][10:-3].strip())
+
             task = build_task()
             input_content = build_input_block()
             tools_description = ""
@@ -159,16 +166,18 @@ inputSchema: {v['inputSchema']}
             """
             try:
                 json_data = json.loads(self.config['task'])
-                await self.print('agent', self.config['task'])
                 answer = None
             except json.JSONDecodeError as e:
                 # not json data, just ask llm
                 log.info(prompt)
-                await self.print('agent', self.config['task'])
-                answer = await async_chat(prompt)
-                await self.print('llm', answer or '调用错误')
+                if len(tools) > 0 :
+                    answer = "".join([content async for typ, content in async_chat(prompt)])
+                    await self.print("llm", answer or '调用错误')
+                    log.info(answer)
+                else:
+                    async for typ, content in async_chat(prompt, True, True):
+                        await self.print('llm', content, "markdown", typ)
 
-                log.info(answer)
                 json_data = None
 
             tool_ret = None
@@ -230,8 +239,8 @@ inputSchema: {v['inputSchema']}
             app_ctx.set_run_state(self.node_id, "failed", error=str(e))
             return None
 
-    async def print(self, role, message, type="markdown"):
-        await self.owner().get_data_pipe().write_to_frontend(self.owner().node_id, self.node_id, message, role, type)
+    async def print(self, role, message, type="markdown", channel='prompt'):
+        await self.owner().get_data_pipe().write_to_frontend(self.owner().node_id, self.node_id, message, role, type, channel)
 
     def save_config(self):
         self.owner().graph().update_node("Agent",
@@ -406,7 +415,7 @@ inputSchema: {v['inputSchema']}
     async def elic_handle(self, message: str, response_type: type, params, context):
         data_pipe = self.owner().get_data_pipe()
         query = json.loads(message)
-        if query['command'] == 'end':
+        if query.get('command') == 'end':
             await self.owner().terminate()
             return ElicitResult(action="cancel")
         query |= {
@@ -434,12 +443,66 @@ inputSchema: {v['inputSchema']}
 
         log.info(f"elic_handle: {response}")
 
-        if feedback['status'] == "cancel":
-            return ElicitResult(action="cancel")
-        elif feedback['status'] == "refuse":
-            return ElicitResult(action="refuse")
+        if feedback['status'] in ["cancel", "refuse"]:
+            return ElicitResult(action=feedback['status'])
+
         #default is accept
         return response_type(result="accept", response=response)
+
+    def get_nodes(self, ctx, node_name):
+        rels = self.owner().graph().get_relationship(
+            {
+                "src_label": "Data",
+                "src_props": {"app_ctx_id": ctx.node_id, "name": node_name},
+                "rel_types": ["SUBHEADING"],
+                "hop_num": 1
+            }
+        )
+        if len(rels) == 0:
+            return []
+
+        return [node for _, _, node in rels]
+
+    def save_io_data(self, ctx, content, typ='markdown'):
+        self.clear_output(ctx)
+        io_data = json.dumps([{"data": content, "type": typ}])
+        return self.save_result(ctx, {"content": io_data})
+
+    async def run_script_mode(self, ctx, script):
+        from RestrictedPython import safe_builtins
+
+        class EndFlow(Exception):
+            pass
+
+        def end_flow():
+            raise EndFlow()
+        builtins = {
+            "get_node_data": lambda name: self.get_node_data(ctx, name),
+            "save_io_data": lambda content, typ='markdown': self.save_io_data(ctx, content, typ),
+            "next_agent": lambda: self.owner().next_agent(ctx, self.config),
+            "end_flow": end_flow,
+            **safe_builtins
+        }
+
+        local_scope = {}
+        try:
+            code_obj = compile(script, "<user_script>", "exec")
+
+            exec(code_obj, {"__builtins__": builtins}, local_scope)
+
+            if "main" in local_scope and callable(local_scope["main"]):
+                await local_scope["main"]()
+
+
+        except EndFlow:
+            ctx.set_run_state(self.node_id, "cancel")
+        except Exception as e:
+            await self.print(f"agent:{self.config['name']}",f"error: {e}")
+            print(e)
+            return False
+
+        return True
+
 
 if __name__ == '__main__':
     from application_manager import Application

@@ -54,11 +54,11 @@
                     app_id:options.app_id,
                     agent_id:options.agent_id,
                 },
-                options,
+                {...options,...options?.content},
                 file,
                 localStorage.getItem("token")
             ).then((response) => {
-                options.callbackData = {description: (options.callbackData?.description ?? "上传文件：\n") + "\r" + response.filename + "\n"};
+                options.callbackData = {type:'markdown', data: (options.callbackData?.data ?? "上传文件：\n") + "\r" + response.filename + "\n"};
                 resolve({success: response.status == 'successfully'});
             }).catch((error) => {
                 resolve({success: false});
@@ -147,7 +147,7 @@
                     {isDragging ? '释放文件以上传' : '选择文件或拖放到此处'}
                 </h3>
                 <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">
-                    支持文件类型: {options.file_format || '所有类型'}
+                    支持文件类型: {options?.content?.file_format || '所有类型'}
                 </p>
                 <button
                     class="inline-flex items-center px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-200"
@@ -162,7 +162,7 @@
             </div>
 
             <input
-                accept="{ options?.file_format ? options.file_format.split(',').map(ext => '.' + ext.trim()).join(',') : '' }"
+                accept="{ options?.content?.file_format ? options?.content?.file_format.split(',').map(ext => '.' + ext.trim()).join(',') : '' }"
                 bind:this={fileInput}
                 class="hidden"
                 multiple

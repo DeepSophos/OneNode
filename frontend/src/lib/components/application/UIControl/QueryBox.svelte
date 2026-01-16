@@ -14,7 +14,7 @@
         isReady = queryStr.trim() !== '';
     }
 
-    $:options.callbackData = {description: queryStr};
+    $:options.callbackData = {"type":"markdown", "data":queryStr};
 
 </script>
 

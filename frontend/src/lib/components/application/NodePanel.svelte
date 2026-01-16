@@ -189,7 +189,7 @@
     })
 </script>
 
-<div class="w-[24vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col h-[calc(100vh-73px)]">
+<div class="w-[30vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col h-[calc(100vh-73px)]">
     <!-- 头部工具栏 -->
     <div class="px-2 py-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
         <div class="flex">

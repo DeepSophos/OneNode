@@ -37,13 +37,15 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
 
     """提示用户上传指定的文件"""
     file_upload_control = {
-        "command": "show_ui_control",
+        "channel": "ui_control",
         "data": {
             "type": "file_upload_box",
-            "title": title,
-            "file_format": file_format,
-            "upload_dir": upload_dir,
-            "app_ctx_id": app_session.appctx_id
+            "content": {
+                "title": title,
+                "file_format": file_format,
+                "upload_dir": upload_dir,
+                "app_ctx_id": app_session.appctx_id
+            }
         }
     }
     user_feedback = await ctx.elicit(
@@ -51,15 +53,19 @@ async def upload_files(title: str, file_format: str, upload_dir: str, ctx: Conte
         response_type=FrontEndMessage
     )
 
-    if user_feedback.action in ["cancel" ,"refuse"]:
-        return json.dumps({"status": "cancel"})
+    if user_feedback.action in ["cancel", "refuse"]:
+        return json.dumps({
+            "status": user_feedback.action,
+            "type": "markdown",
+            "data": "取消上传" if user_feedback.action == "cancel" else "拒绝上传"
+        })
 
     feedback_data = json.loads(user_feedback.data.response)
     # logging.info(f"from mcp server: {feedback_data}")
     # await end_client_elicit(ctx)
     ctx.info(feedback_data)
 
-    return json.dumps(feedback_data.get("data", {}))
+    return json.dumps(feedback_data.get("data", {}) | {"internal": True})
 
 
 @mcp.tool
@@ -71,11 +77,13 @@ async def input_query(title: str, ctx: Context) -> str:
     app_session = MCPSession([str(root.uri) for root in roots], ctx)
     """提示用户输入"""
     user_query_control = {
-        "command": "show_ui_control",
+        "channel": "ui_control",
         "data": {
             "type": "user_query_box",
-            "title": title,
-            "app_ctx_id": app_session.appctx_id
+            "content": {
+                "title": title,
+                "app_ctx_id": app_session.appctx_id
+            }
         }
     }
     user_feedback = await ctx.elicit(
@@ -84,12 +92,16 @@ async def input_query(title: str, ctx: Context) -> str:
     )
 
     if user_feedback.action in ["cancel" ,"refuse"]:
-        return json.dumps({"status": "cancel"})
+        return json.dumps({
+            "status": user_feedback.action,
+            "type": "markdown",
+            "data": "取消输入" if user_feedback.action == "cancel" else "拒绝输入"
+        })
 
     feedback_data = json.loads(user_feedback.data.response)
     ctx.info(feedback_data)
 
-    return json.dumps(feedback_data.get("data", {"status": "cancel"}))
+    return json.dumps(feedback_data.get("data", {}) | {"internal": True})
 
 @mcp.tool
 async def read_docx_from_dir(subdirectory: str, file_format: str, ctx: Context) -> str:
@@ -220,21 +232,6 @@ async def retrieve_scope(scope_name: str, query: str, ctx: Context) -> str:
         return json.dumps({"status": "error", "data": str(e)})
 
 @mcp.tool
-async def extract_rule_field(ctx: Context) -> str:
-    """
-    **提取规则字段**这个工具用于提取规则字段。
-    """
-    roots = await ctx.list_roots()
-    app_session = MCPSession([str(root.uri) for root in roots], ctx)
-    try:
-        ret = await local_service.extract_rule_field(app_session)
-        return json.dumps(ret)
-    except Exception as e:
-        app_session.write_log(e)
-        app_session.write_log(traceback.format_exc())
-        return json.dumps({"status": "error", "data": str(e)})
-
-@mcp.tool
 async def query_memgraph(cypher: str, query_str: str, ctx: Context) -> str:
     """
     **memgraph查询工具**这个工具用于执行memgraph的精确查询。参数说明：
@@ -262,21 +259,6 @@ async def query_embedding(keywords: str, query_str: str,  ctx: Context) -> str:
     app_session = MCPSession([str(root.uri) for root in roots], ctx)
     try:
         ret = await local_service.query_embedding(app_session, keywords, query_str)
-        return json.dumps(ret)
-    except Exception as e:
-        app_session.write_log(e)
-        app_session.write_log(traceback.format_exc())
-        return json.dumps({"status": "error", "data": str(e)})
-
-@mcp.tool
-async def query_vllm(ctx: Context) -> str:
-    """
-    **智能问答**这个工具根据检索后的案件信息请求大模型，实现智能回答。
-    """
-    roots = await ctx.list_roots()
-    app_session = MCPSession([str(root.uri) for root in roots], ctx)
-    try:
-        ret = await local_service.query_vllm(app_session)
         return json.dumps(ret)
     except Exception as e:
         app_session.write_log(e)

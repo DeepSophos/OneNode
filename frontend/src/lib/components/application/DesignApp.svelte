@@ -476,7 +476,7 @@
             />
         </div>
         {#if showRunAppPanel}
-            <div class="w-[24vw]">
+            <div class="w-[30vw]">
                 <RunAppPanel
                         {app_id}
                         closeBtn={true}

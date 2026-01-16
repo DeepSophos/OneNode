@@ -1,0 +1,12 @@
+```python
+async def main():
+	for node in get_nodes("白板"):
+		content = node.get("content")
+		content = "".join(item.get("content", "") for item in content)
+		if not content:
+			continue
+		save_io_data(content)
+		await next_agent()
+	end_flow()
+
+```

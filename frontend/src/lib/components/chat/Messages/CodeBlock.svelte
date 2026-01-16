@@ -28,7 +28,7 @@
 	export let onPreview = (e) => {};
 
 	export let save = false;
-	export let run = true;
+	export let run = false;
 	export let preview = false;
 	export let collapsed = false;
 

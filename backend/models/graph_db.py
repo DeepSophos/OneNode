@@ -10,7 +10,7 @@ import traceback
 
 
 logger = logging.getLogger(__name__)
-# logger.setLevel('DEBUG')
+logger.setLevel(logging.CRITICAL)
 
 # console_handler = logging.StreamHandler()
 # console_handler.setLevel(logging.INFO)
