@@ -49,6 +49,7 @@ bash backend/start.sh
 
 ## 🏗️ Architecture
 
+![architecture](./backend/static/onenode_arch.png)
 
 ## 🤖 LLM Models
 
