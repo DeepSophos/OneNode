@@ -16,7 +16,7 @@ services:
       LANG: "zh_CN.UTF-8"
       LC_ALL: "zh_CN.UTF-8"
       TMPDIR: "/tmp"
-      PORT: "8080"
+      PORT: "8120"
       HF_URL: "${HF_URL}"
       HOST_URL: "${HOST_URL}"
       OMPT_URL: "${OMPT_URL}"
@@ -30,15 +30,17 @@ services:
       - ./backend:/OneNode
       - ./build:/build
     ports:
-      - "8080:8080"
+      - "8120:8120"
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: [ '0' ]
-              capabilities: [ gpu ]
+    networks:
+      - onenode_network
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    container_name: memgraph
+    ports:
+      - "7687:7687"
+    restart: unless-stopped
     networks:
       - onenode_network
 

@@ -1,18 +1,16 @@
 FROM ubuntu:24.04
 
-RUN tee /etc/apt/sources.list <<-'EOF'
-deb https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
-EOF
+RUN echo "deb https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse" >  /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse" >> /etc/apt/sources.list
 
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
     add-apt-repository ppa:libreoffice/ppa && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y \
-    wget git libreoffice python3.11 locales \
+    cmake wget git libreoffice python3.11 locales \
     fonts-noto-cjk fonts-wqy-zenhei fonts-wqy-microhei fonts-arphic-uming
 
 RUN echo "zh_CN.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen zh_CN.UTF-8
@@ -25,7 +23,6 @@ WORKDIR /OneNode
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
     && bash miniconda.sh -b -u -p /miniconda3 \
     && /miniconda3/bin/conda init bash
-
 
 RUN /bin/bash -c "source /miniconda3/bin/activate \
     && conda clean --all --yes \
