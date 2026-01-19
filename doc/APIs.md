@@ -16,11 +16,11 @@
 ```json
 {
   "option":  {
-     "prompt": "列出2023-2025的数据",
-     "agent": "问题解析",
-     "new_ctx": false
+     "prompt": "列出2023-2025的数据"
   },
-  "app_name": "公估报告智数问答"
+  "app_name": "公估报告智数问答",
+  "agent_name": "问题解析",
+  "new_ctx": false
 }
 ```
 

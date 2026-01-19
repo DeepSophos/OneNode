@@ -43,3 +43,4 @@ opencc==1.1.9
 pymgclient==1.5.1
 docxtpl==0.20.1
 fastmcp==2.12.5
+

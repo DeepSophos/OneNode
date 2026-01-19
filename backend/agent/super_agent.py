@@ -11,11 +11,28 @@ from fastmcp.client.transports import StdioTransport
 import os, re
 import sys
 import config as main_config
+from typing import Awaitable, Any
 from pathlib import Path
 
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
+
+
+async def execute_async_code(code_str, builtins=None):
+    local_scope = {}
+
+    if builtins is None:
+        builtins = {}
+
+    indented_code = "\n".join(f"    {line}" for line in code_str.splitlines())
+    wrapper_code = f"async def __dynamic_async_wrapper():\n{indented_code}"
+    code_obj = compile(wrapper_code, "<user_script>", "exec")
+    exec(code_obj, {"__builtins__": builtins}, local_scope)
+    await local_scope["__dynamic_async_wrapper"]()
+    if "main" in local_scope and callable(local_scope["main"]):
+        await local_scope["main"]()
+
 
 def convert_to_json(input_str, only_clean=False):
     cleaned = input_str.strip()
@@ -469,30 +486,25 @@ inputSchema: {v['inputSchema']}
         return self.save_result(ctx, {"content": io_data})
 
     async def run_script_mode(self, ctx, script):
-        from RestrictedPython import safe_builtins
-
         class EndFlow(Exception):
             pass
 
         def end_flow():
             raise EndFlow()
+
+        # FIXME: save_io_data() 需要更名
         builtins = {
             "get_node_data": lambda name: self.get_node_data(ctx, name),
             "save_io_data": lambda content, typ='markdown': self.save_io_data(ctx, content, typ),
-            "next_agent": lambda: self.owner().next_agent(ctx, self.config),
+            "anext_agent": lambda: self.owner().next_agent(ctx, self.config),
+            "aprint_message": lambda message: self.print(f"agent:{self.config['name']}", message),
+            "aprint_response": lambda message: self.print(f"agent:{self.config['name']}", message, channel="response"),
             "end_flow": end_flow,
-            **safe_builtins
+            **__builtins__
         }
 
-        local_scope = {}
         try:
-            code_obj = compile(script, "<user_script>", "exec")
-
-            exec(code_obj, {"__builtins__": builtins}, local_scope)
-
-            if "main" in local_scope and callable(local_scope["main"]):
-                await local_scope["main"]()
-
+            await execute_async_code(script, builtins)
 
         except EndFlow:
             ctx.set_run_state(self.node_id, "cancel")

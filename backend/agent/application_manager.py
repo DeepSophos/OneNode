@@ -225,11 +225,6 @@ class Application:
 
     async def run_agent(self, ctx, prev, current):
         ret = await current.invoke(ctx)
-        if isinstance(ret, dict):
-            if tool_name := ret.get("tool_name"):
-                agents = [agent for agent in self.nodes.values() if agent.name == tool_name]
-                if agents:
-                    return await self.run_agent(ctx, current, agents[0])
         edges = self.graph().get_relationship({
             "src_label": "Agent",
             "src_props": {"node_id": current.node_id},
