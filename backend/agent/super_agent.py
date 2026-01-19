@@ -30,8 +30,6 @@ async def execute_async_code(code_str, builtins=None):
     code_obj = compile(wrapper_code, "<user_script>", "exec")
     exec(code_obj, {"__builtins__": builtins}, local_scope)
     await local_scope["__dynamic_async_wrapper"]()
-    if "main" in local_scope and callable(local_scope["main"]):
-        await local_scope["main"]()
 
 
 def convert_to_json(input_str, only_clean=False):
@@ -509,8 +507,8 @@ inputSchema: {v['inputSchema']}
             "get_nodes": lambda name: self.get_nodes(ctx, name),
             "save_io_data": lambda content, typ='markdown': self.save_io_data(ctx, content, typ),
             "anext_agent": lambda: self.owner().next_agent(ctx, self.config),
-            "aprint_message": lambda message: self.print(f"agent:{self.config['name']}", message),
-            "aprint_response": lambda message: self.print(f"agent:{self.config['name']}", message, channel="response"),
+            "aprint_message": lambda message, type="markdown": self.print(f"agent:{self.config['name']}", message, type=type),
+            "aprint_response": lambda message, type="markdown": self.print(f"agent:{self.config['name']}", message, type=type, channel="response"),
             "end_flow": end_flow,
             **__builtins__
         }

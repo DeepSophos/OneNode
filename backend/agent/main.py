@@ -4,6 +4,7 @@ import json
 import yaml
 import time
 import shutil
+from pathlib import Path
 from fastapi import (
     FastAPI,
     Depends,
@@ -268,6 +269,7 @@ async def application_export_graph(app_id, request: Request, user=Depends(get_cu
 
         file_name = app_node.get("name", "default") + '.yml'
         file_path = os.path.join(f"{IS_KB_PATH}/application/{app_id}", file_name)
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(yaml_str)

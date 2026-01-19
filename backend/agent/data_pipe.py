@@ -76,18 +76,23 @@ class DataPipe:
         pass
 
     async def write_to_frontend(self, app_name, agent_name, message, role='', type='markdown', channel='prompt', thread=''):
-        if message == '\b' or message == '\r':
-            await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'rewind', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': 1, 'thread': thread})+'\n')
-        elif message == '\a':
-            await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'anchor_start', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': 1, 'thread': thread})+'\n')
-        elif message.startswith(r'\s'):
-            await self.out_q.async_put(json.dumps({'channel': 'progress', 'command': 'new_step', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': {'type': type, 'content': message[2:]}, 'thread': thread})+'\n')
-        elif message.startswith(r'\e'):
-            await self.out_q.async_put(json.dumps({'channel': 'control', 'command': 'end', 'app_name': app_name, 'role': role, 'data': {'type': type, 'content': message[2:]}, 'thread': thread})+'\n')
-        elif message.startswith(r'\u'):
-            await self.out_q.async_put(message[2:]+'\n')
-        elif message != '':
-            await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'append', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': {'type': type, 'content': message},'thread': thread})+'\n')
+        if isinstance(message, str):
+            if message == '\b' or message == '\r':
+                await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'rewind', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': 1, 'thread': thread})+'\n')
+            elif message == '\a':
+                await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'anchor_start', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': 1, 'thread': thread})+'\n')
+            elif message.startswith(r'\s'):
+                await self.out_q.async_put(json.dumps({'channel': 'progress', 'command': 'new_step', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': {'type': type, 'content': message[2:]}, 'thread': thread})+'\n')
+            elif message.startswith(r'\e'):
+                await self.out_q.async_put(json.dumps({'channel': 'control', 'command': 'end', 'app_name': app_name, 'role': role, 'data': {'type': type, 'content': message[2:]}, 'thread': thread})+'\n')
+            elif message.startswith(r'\u'):
+                await self.out_q.async_put(message[2:]+'\n')
+            elif message != '':
+                await self.out_q.async_put(json.dumps({'channel': channel, 'command': 'append', 'app_name': app_name, 'agent_name': agent_name, 'role': role, 'data': {'type': type, 'content': message},'thread': thread})+'\n')
+        else:
+            await self.out_q.async_put(json.dumps(
+                {'channel': channel, 'command': 'append', 'app_name': app_name, 'agent_name': agent_name, 'role': role,
+                 'data': {'type': type, 'content': message}, 'thread': thread}) + '\n')
 
         # log.info(f"out_q.async_put({message})")
 
