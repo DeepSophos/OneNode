@@ -584,10 +584,11 @@ export const runApp = async (
   node_name:string,
   authToken: string
 ) => {
-  const url = `${AGENT_API_BASE_URL}/application/run/${app_id}`;
+  const url = `${AGENT_API_BASE_URL}/application/run`;
 
   const params = {
-    start_node_name: node_name
+    app_id:app_id,
+    agent:node_name
   };
   try {
     const response = await fetch(url, {

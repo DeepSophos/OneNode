@@ -135,10 +135,10 @@ class ApplicationManager:
     def list_application(self):
         return self.graph.get_node("Application")
 
-    def get_application(self, app_id):
+    def get_application(self, app_id, app_name = None):
         if app := self.app_local.get(app_id):
             return app
-        app_node = self.load_application(None, app_id=app_id)
+        app_node = self.load_application(app_name, app_id=app_id)
         if app_node is not None:
             app = Application(self, app_node)
             self.app_local[app_node['node_id']] = app
@@ -195,6 +195,8 @@ class Application:
                     "hop_num": 1
                 }
             )
+            if not relations:
+                self.nodes[node_id].is_last = True
             for current, _, next in relations:
                 self.heads = [n for n in self.heads if n.node_id != next['node_id']]
 
@@ -242,9 +244,15 @@ class Application:
     async def run(self, options=None):
         self.update_heads()
         run_nodes = self.heads
-        if "start_node_name" in (options or {}):
-            run_nodes = [node for node in self.heads if node.name == options["start_node_name"]]
-        self.ctx = self.runner.new_run(self.incomes)
+        if agent_name := options.get("agent"):
+            run_nodes = [node for node in self.heads if node.name == agent_name]
+        if self.ctx is None or options.get("new_ctx",  True):
+            self.ctx = self.runner.new_run(self.incomes)
+        else:
+            list_run = self.runner.list_run()
+            self.ctx = self.runner.get_run(list_run[-1]["node_id"], self.incomes) \
+                if list_run else self.runner.new_run(self.incomes)
+
         asyncio.create_task(self.run_agents_with_terminate(self.ctx, run_nodes))
         return self.data_pipe.frontend_event_generator()
 
@@ -328,7 +336,9 @@ class Application:
 
     async def feedback(self, message):
         feedback = json.loads(message)
-        await self.data_pipe.write_to_frontend(self.node_id, '', feedback.get("data", {}).get("data", "操作完成"), 'user')
+        if agent_id := feedback.get("agent_id"):
+            agent_name = self.nodes[agent_id].name if agent_id in self.nodes else agent_id
+        await self.data_pipe.write_to_frontend(self.app_node["name"], agent_name, feedback.get("data", {}).get("data", "操作完成"), 'user')
         await self.data_pipe.put_to_input_queue(
             json.dumps(feedback | {"app_id": self.node_id}))
         return {"status": "successfully"}

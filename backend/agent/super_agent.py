@@ -13,7 +13,7 @@ import sys
 import config as main_config
 from typing import Awaitable, Any
 from pathlib import Path
-
+import textwrap
 
 log = logging.getLogger(__name__)
 log.setLevel('INFO')
@@ -54,6 +54,7 @@ class SuperAgent:
         self.node_id = config['node_id']
         self.name = config.get("name", f"智能代理_{self.node_id}")
         self.config = config
+        self.is_last = False
         self.transport = StdioTransport(
             command=sys.executable,
             args=[str(self.owner().mcp_path)],
@@ -112,6 +113,15 @@ class SuperAgent:
         def build_task():
             node_names = re.findall(r'{{(.*?)}}', self.config["task"])
             result = [self.config["task"].strip()]
+
+            def smart_unescape(s):
+                if '\\u' not in s and '\\x' not in s:
+                    return s
+                try:
+                    return s.encode('utf-8').decode('unicode-escape')
+                except (UnicodeDecodeError, UnicodeEncodeError, ValueError):
+                    return s
+
             for node_name in node_names:
                 try:
                     node_result = self.get_result_by_name(app_ctx, node_name)
@@ -119,7 +129,7 @@ class SuperAgent:
                     node_result = f"无"
 
                 result.append(f"{{{node_name}}} 执行的结果是：")
-                result.append(str(node_result).encode('utf-8').decode('unicode-escape'))
+                result.append(smart_unescape(node_result))
                 result.append("")
 
             return "\n".join(result)
@@ -133,8 +143,10 @@ class SuperAgent:
 
             await self.print(f"agent:{self.config['name']}", self.config['task'])
 
-            if self.config["task"].strip().startswith('```python') and self.config["task"].strip().endswith('```'):
-                return await self.run_script_mode(app_ctx, self.config["task"][10:-3].strip())
+            task = self.config["task"].strip()
+            if task.startswith('```python') and task.endswith('```'):
+                code = textwrap.dedent(task[10:-3])
+                return await self.run_script_mode(app_ctx, code)
 
             task = build_task()
             input_content = build_input_block()
@@ -187,13 +199,13 @@ inputSchema: {v['inputSchema']}
             except json.JSONDecodeError as e:
                 # not json data, just ask llm
                 log.info(prompt)
-                if len(tools) > 0 :
+                if self.is_last and not tools:
+                    async for typ, content in async_chat(prompt, True, True):
+                        await self.print('llm', content, "markdown", typ)
+                else:
                     answer = "".join([content async for typ, content in async_chat(prompt)])
                     await self.print("llm", answer or '调用错误')
                     log.info(answer)
-                else:
-                    async for typ, content in async_chat(prompt, True, True):
-                        await self.print('llm', content, "markdown", typ)
 
                 json_data = None
 
@@ -257,7 +269,7 @@ inputSchema: {v['inputSchema']}
             return None
 
     async def print(self, role, message, type="markdown", channel='prompt'):
-        await self.owner().get_data_pipe().write_to_frontend(self.owner().node_id, self.node_id, message, role, type, channel)
+        await self.owner().get_data_pipe().write_to_frontend(self.owner().app_node["name"], self.name, message, role, type, channel)
 
     def save_config(self):
         self.owner().graph().update_node("Agent",
@@ -494,7 +506,7 @@ inputSchema: {v['inputSchema']}
 
         # FIXME: save_io_data() 需要更名
         builtins = {
-            "get_node_data": lambda name: self.get_node_data(ctx, name),
+            "get_nodes": lambda name: self.get_nodes(ctx, name),
             "save_io_data": lambda content, typ='markdown': self.save_io_data(ctx, content, typ),
             "anext_agent": lambda: self.owner().next_agent(ctx, self.config),
             "aprint_message": lambda message: self.print(f"agent:{self.config['name']}", message),

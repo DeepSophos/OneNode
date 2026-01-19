@@ -265,5 +265,40 @@ async def query_embedding(keywords: str, query_str: str,  ctx: Context) -> str:
         app_session.write_log(traceback.format_exc())
         return json.dumps({"status": "error", "data": str(e)})
 
+@mcp.tool
+async def graph_add_node(
+        parent_node_name: str,
+        node_name: str,
+        type: str,
+        content: str,
+        is_global: bool,
+        is_attribute: bool,
+        ctx: Context) -> str:
+    """
+    **添加节点**这个工具用于在memgraph数据库添加一个节点。参数说明：
+    parent_node_name: 父节点名称
+    node_name: 节点名称
+    type: 节点内容类型
+    content: 节点内容
+    is_global: 是否为全局节点
+    is_attribute: 是否把content作为属性添加
+    """
+    roots = await ctx.list_roots()
+    app_session = MCPSession([str(root.uri) for root in roots], ctx)
+    try:
+        ret = await local_service.graph_add_node(
+            app_session,
+            parent_node_name,
+            node_name,
+            type,
+            content,
+            is_global,
+            is_attribute)
+        return json.dumps(ret)
+    except Exception as e:
+        app_session.write_log(e)
+        app_session.write_log(traceback.format_exc())
+        return json.dumps({"status": "error", "data": str(e)})
+
 if __name__ == "__main__":
     mcp.run()

@@ -138,10 +138,17 @@ class AgentGetDataForm(BaseModel):
     content: str
 
 
-@app.post("/application/run/{app_id}")
-async def application_run(app_id: str, options: Optional[dict] = None, request: Request = None, user=Depends(get_current_user)):
+@app.post("/application/run")
+async def application_run(options: Optional[dict] = None, request: Request = None, user=Depends(get_current_user)):
     try:
-        agent_app = app.state.app_man.get_application(app_id)
+        app_id = options.get("app_id",None)
+        app_name = options.get("app_name",None)
+        if not app_id and not app_name:
+            raise HTTPException(
+                status_code=422,
+                detail="必须提供 app_id 或 app_name 中的至少一个"
+            )
+        agent_app = app.state.app_man.get_application(app_id, app_name)
         response = await agent_app.run(options=options)
         return StreamingResponse(
             response,

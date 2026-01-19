@@ -361,6 +361,102 @@ async def query_embedding(app_session, query, query_user,
 
     return {"status": "successfully", "data": f"第二步检索数量：{case_num}", "type": "markdown"}
 
+async def graph_add_node(
+        app_session,
+        parent_node_name: str,
+        node_name: str,
+        type: str,
+        content: str,
+        is_global: bool,
+        is_attribute: bool):
+
+    root_node_data={
+        "app_id": app_session.app_id,
+        "name": parent_node_name
+    }
+    if not is_global:
+        root_node_data |= {
+            "agent_id": app_session.agent_id,
+            "app_ctx_id": app_session.appctx_id,
+            "io_data_id": app_session.io_data_id
+        }
+
+    root_node_list = app_session.graph.get_node("Data", root_node_data)
+    if len(root_node_list) > 0:
+        root_node = root_node_list[0]
+    else:
+        root_node = app_session.graph.add_node("Data", root_node_data)
+
+
+    node_data = {
+        "app_id": app_session.app_id,
+        "name": node_name,
+        "content": [{"type": type, "content": content}],
+    }
+    if not is_global:
+        node_data |= {
+            "agent_id": app_session.agent_id,
+            "app_ctx_id": app_session.appctx_id,
+            "io_data_id": app_session.io_data_id
+        }
+    if is_attribute:
+        try:
+            clean_text = json.dumps(content)[1:-1]
+            attributes= json.loads(clean_text)
+            node_data |= attributes
+        except Exception as e:
+            pass
+
+    new_node = app_session.graph.add_node("Data", node_data)
+    app_session.graph.add_relationship(
+        "Data",
+        root_node['node_id'],
+        "SUBHEADING",
+        "Data",
+        new_node['node_id']
+    )
+    #     fields = [
+    #         "追偿处理",
+    #         "损失状况描述",
+    #         "可能导致原因",
+    #         "是否淡水或海水损",
+    #         "事故经过",
+    #         "损失原因"
+    #     ]
+    #     embedding_content = []
+    #     for field in fields:
+    #         value = answer_json.get(field, "")
+    #         embedding_content.append(f"{field}: {value}")
+    #     embedding_content = "\n".join(embedding_content)
+    #
+    #     if not embedding_content.strip():
+    #         continue
+    #
+    #     data_vecs = hf_client.embedding(embedding_content)
+    #     embedding_list.append({
+    #         "node_id": new_node['node_id'],
+    #         "node_content": embedding_content,
+    #         "node_content_vecs": data_vecs
+    #     })
+    #
+    # embedding_path = app_session.app_dir / "embedding"
+    # embedding_data = []
+    # if embedding_path.exists():
+    #     try:
+    #         with open(embedding_path, 'r', encoding='utf-8') as f:
+    #             embedding_data = json.load(f)
+    #             embedding_data.extend(embedding_list)
+    #     except Exception as e:
+    #         embedding_data = embedding_list
+    # else:
+    #     embedding_data = embedding_list
+    #
+    # with open(app_session.app_dir / "embedding", "w") as f:
+    #     f.write(json.dumps(embedding_data, ensure_ascii=False, indent=2))
+
+    return {"status": "successfully", "data": f"{root_node_data['name']}", "type": "tree"}
+
+
 def tool_dev():
     id_pairs = [
         ("l9es6m0cuhxx", "dd185gxquov4"),
