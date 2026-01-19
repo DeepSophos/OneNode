@@ -215,30 +215,16 @@ class Application:
             self.incomes[v['node_id']].add(k['node_id'])
             self.edges.append((k['node_id'], v['node_id']))
 
-    # async def next_agent(self, ctx, current):
-    #     edges = self.graph().get_relationship({
-    #         "src_label": "Agent",
-    #         "src_props": {"node_id": current.get("node_id")},
-    #         "rel_types": ["NEXT"],
-    #         "hop_num": 1})
-    #     return await self.run_agents(ctx, current, [self.nodes[nxt['node_id']] for _, _, nxt in edges])
-
     async def next_agent(self, ctx, current):
         edges = self.graph().get_relationship({
             "src_label": "Agent",
             "src_props": {"node_id": current.get("node_id")},
             "rel_types": ["NEXT"],
             "hop_num": 1})
-        if edges:
-            return await self.run_agents(ctx, current, [self.nodes[nxt['node_id']] for _, _, nxt in edges])
+        return await self.run_agents(ctx, current, [self.nodes[nxt['node_id']] for _, _, nxt in edges])
 
     async def run_agent(self, ctx, prev, current):
         ret = await current.invoke(ctx)
-        # if isinstance(ret, dict):
-        #     if tool_name := ret.get("tool_name"):
-        #         agents = [agent for agent in self.nodes.values() if agent.name == tool_name]
-        #         if agents:
-        #             return await self.run_agent(ctx, current, agents[0])
         edges = self.graph().get_relationship({
             "src_label": "Agent",
             "src_props": {"node_id": current.node_id},
