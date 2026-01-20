@@ -145,10 +145,12 @@ if __name__ == "__main__":
     for event in stream_sse_json(API_URL, payload, headers):
         # 一般 SSE 里常见的几种字段写法，你可以根据实际接口调整
         if isinstance(event, dict):
+            print(event)
             if event.get("agent_name") != "读取同步文件名列表" and event.get("channel") != "response":
                 #忽略其它消息
                 continue
             if data := event.get("data"):
                 if data.get("type") == "files":
                     for file in data.get("content", []):
-                        print(file)
+                        #print(file)
+                        pass
