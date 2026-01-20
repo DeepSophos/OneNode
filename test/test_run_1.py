@@ -1,6 +1,7 @@
 # tests/test_file_list_sse.py
-
 import json
+import requests
+from typing import Iterator, Dict, Any
 import pytest
 import requests
 from sseclient import SSEClient
@@ -38,13 +39,97 @@ def build_payload(
     }
 
 
-def extract_file_list_from_sse(url: str, payload: dict, timeout=45) -> List[str]:
+def stream_sse_json(
+        url: str,
+        payload: dict,
+        headers: dict,
+        connect_timeout: float = 10.0,
+        read_timeout: float = 45.0
+) -> Iterator[Dict[str, Any]]:
     """
-    通过 SSE 读取流式响应，尝试找到 type=="files" 的 content 数组
-    返回提取到的文件名列表
-    """
-    files = []
+    以生成器方式逐个 yield 解析后的 JSON 对象
 
+    适合处理大多数 SSE 格式（data: {...} 风格）
+    也兼容有些服务把完整 json 直接放在一行的情况
+    """
+    buffer = ""  # 用于保存跨 chunk 的残余数据
+
+    try:
+        with requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                stream=True,
+                timeout=(connect_timeout, read_timeout)
+        ) as resp:
+            resp.raise_for_status()
+
+            print("开始接收 SSE 事件...\n")
+
+            for chunk in resp.iter_content(chunk_size=8192, decode_unicode=False):
+                if not chunk:
+                    continue
+
+                # 尝试用 utf-8 解码，失败就累积到下一次
+                try:
+                    text = chunk.decode('utf-8')
+                except UnicodeDecodeError:
+                    buffer += chunk.decode('utf-8', errors='ignore')
+                    continue
+
+                buffer += text
+
+                # 处理所有完整的行
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    line = line.rstrip('\r')  # 去除可能的 \r
+
+                    # 跳过空行
+                    if not line:
+                        continue
+
+                    # 最常见 SSE 格式：data: {json}
+                    if line.startswith('data:'):
+                        data_str = line[5:].strip()
+                        # 有些服务会把多条 data: 拼接起来形成一个完整 json
+                        # 这里简单处理：只取 data: 开头的部分
+                    else:
+                        # 有些服务直接把 json 丢一行，没有 data: 前缀
+                        data_str = line
+
+                    try:
+                        json_obj = json.loads(data_str)
+                        yield json_obj
+                    except json.JSONDecodeError as e:
+                        print(f"JSON 解析失败: {e}")
+                        print(f"原始内容: {data_str[:200]!r}...")
+                        # 可以选择 continue / raise / yield 错误信息，看业务需求
+
+            # 最后检查 buffer 里是否还有残余完整的一条（有些服务器不以空行结尾）
+            if buffer.strip():
+                try:
+                    # 尝试处理最后可能没换行的 data
+                    if buffer.startswith('data:'):
+                        data_str = buffer[5:].strip()
+                    else:
+                        data_str = buffer.strip()
+
+                    json_obj = json.loads(data_str)
+                    yield json_obj
+                except json.JSONDecodeError:
+                    print(f"最后残余内容无法解析为 JSON: {buffer[:200]!r}...")
+
+        print("\nSSE 流结束")
+
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"请求失败: {e}")
+    except Exception as e:
+        pytest.fail(f"未知异常: {e}")
+
+
+# 使用示例
+if __name__ == "__main__":
+    # 假设你有这样的请求信息
     headers = {
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
@@ -52,93 +137,18 @@ def extract_file_list_from_sse(url: str, payload: dict, timeout=45) -> List[str]
         "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImU1M2E5NWI1LWI3MWQtNGI2Yi1iMDIzLTk0MzkxOTBlNTY3YSIsImV4cCI6MTc2OTQzMTYxN30.k5kwONhbDEXydv8bnkJ6ZaYcBiNjU38g1AfYoyJE2XI",
     }
 
-    try:
-        with requests.post(
-            url,
-            json=payload,
-            headers=headers,
-            stream=True,
-            timeout=(10, timeout)   # connect timeout 10s, read timeout 45s
-        ) as resp:
-            resp.raise_for_status()
-
-            client = SSEClient(resp)
-
-            print("开始接收 SSE 事件...\n")
-
-            for event in client.events():
-                if event.event == "message" and event.data:
-                    try:
-                        data = json.loads(event.data)
-                        print("←", json.dumps(data, ensure_ascii=False, indent=2))
-
-                        # 你的业务逻辑判断
-                        if data.get("channel") == "response" and \
-                           data.get("data", {}).get("type") == "files":
-
-                            content = data["data"].get("content", [])
-                            if isinstance(content, list):
-                                files.extend(content)
-                                print(f"找到文件列表（累计 {len(files)} 条）")
-
-                    except json.JSONDecodeError:
-                        print("非 JSON 数据:", event.data)
-                    except Exception as e:
-                        print("解析单条事件出错:", str(e))
-
-                elif event.event in ("error", "exception"):
-                    print("服务端报错事件:", event.data)
-                    break
-
-            print("\nSSE 流结束")
-
-    except requests.exceptions.RequestException as e:
-        pytest.fail(f"请求失败: {e}")
-
-    return files
-
-
-# ================== 测试用例 ==================
-
-@pytest.mark.parametrize("fetch_state, import_state, expected_min_files", [
-    (None, None, 0),           # 全部
-    ("success", None, 1),      # 至少应该有成功上传的文件（根据你的业务预期改）
-    (None, "failed", 0),
-    ("failed", "failed", 0),
-])
-def test_get_file_list(fetch_state, import_state, expected_min_files):
-    """
-    测试不同过滤条件下能否正确拿到文件列表
-    """
-    payload = build_payload(
-        page=1,
-        page_length=20,
-        fetch_state=fetch_state,
-        import_state=import_state,
-        new_ctx=False
-    )
-
-    files = extract_file_list_from_sse(API_URL, payload)
-
-    print(f"\n最终得到的文件列表（{len(files)} 条）：")
-    for f in files:
-        print("  •", f)
-
-    # 根据你的业务实际情况修改断言条件
-    assert isinstance(files, list)
-    assert len(files) >= expected_min_files, \
-        f"预期至少 {expected_min_files} 个文件，实际得到 {len(files)} 个"
-
-
-@pytest.mark.xfail(reason="仅用于演示如何发送 new_ctx=true 的情况")
-def test_new_context():
-    payload = build_payload(new_ctx=True)
-    files = extract_file_list_from_sse(API_URL, payload)
-    assert len(files) >= 0   # 只是演示，实际断言根据业务
-
-
-if __name__ == "__main__":
-    # 本地调试方便
     payload = build_payload(fetch_state="success")
-    files = extract_file_list_from_sse(API_URL, payload)
-    print("直接运行得到的文件：", files)
+
+
+    print("开始测试 SSE 流式读取...\n")
+
+    for event in stream_sse_json(API_URL, payload, headers):
+        # 一般 SSE 里常见的几种字段写法，你可以根据实际接口调整
+        if isinstance(event, dict):
+            if event.get("agent_name") != "读取同步文件名列表" and event.get("channel") != "response":
+                #忽略其它消息
+                continue
+            if data := event.get("data"):
+                if data.get("type") == "files":
+                    for file in data.get("content", []):
+                        print(file)
